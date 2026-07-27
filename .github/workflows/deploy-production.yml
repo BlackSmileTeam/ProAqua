@@ -1,0 +1,91 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: proaqua-production-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT }}
+          command_timeout: 30m
+          script_stop: true
+          script: |
+            set -eo pipefail
+
+            CONN='${{ secrets.DB_CONNECTION_STRING }}'
+            if [ -z "$CONN" ]; then CONN='${{ secrets.APP_CONNECTION_STRING }}'; fi
+            if [ -z "$CONN" ]; then echo "ERROR: set DB_CONNECTION_STRING or APP_CONNECTION_STRING"; exit 1; fi
+
+            REPO_SSH_URL="git@github.com:${{ github.repository }}.git"
+            REPO_NAME="${{ github.event.repository.name }}"
+            BRANCH="main"
+            DEPLOY_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/$REPO_NAME"; fi
+
+            mkdir -p "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+
+            if [ ! -d .git ]; then
+              git init
+              git remote add origin "$REPO_SSH_URL"
+            else
+              git remote set-url origin "$REPO_SSH_URL"
+            fi
+
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+
+            git fetch --prune origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
+            git checkout -f -B "$BRANCH" "origin/$BRANCH"
+
+            FE_PORT='${{ secrets.PROD_FRONTEND_PORT }}'
+            if [ -z "$FE_PORT" ]; then FE_PORT=55512; fi
+            BE_PORT='${{ secrets.PROD_BACKEND_PORT }}'
+            if [ -z "$BE_PORT" ]; then BE_PORT=55511; fi
+
+            umask 077
+            {
+              echo "FRONTEND_PORT=$FE_PORT"
+              echo "BACKEND_PORT=$BE_PORT"
+              echo "MYSQL_PORT=3307"
+              echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}"
+              echo "MYSQL_DATABASE=proaqua"
+              echo "MYSQL_APP_USER=proaqua"
+              echo "MYSQL_APP_PASSWORD=${{ secrets.MYSQL_APP_PASSWORD }}"
+              echo "APP_CONNECTION_STRING=$CONN"
+              echo "JWT_KEY=${{ secrets.JWT_KEY }}"
+              echo "JWT_ISSUER=ProAquaApi"
+              echo "JWT_AUDIENCE=ProAquaClient"
+              echo "PUSH_PROVIDER=${{ secrets.PUSH_PROVIDER }}"
+              echo "AMOCRM_ENABLED=${{ secrets.AMOCRM_ENABLED }}"
+              echo "AMOCRM_BASE_URL=${{ secrets.AMOCRM_BASE_URL }}"
+              echo "AMOCRM_ACCESS_TOKEN=${{ secrets.AMOCRM_ACCESS_TOKEN }}"
+              echo "AMOCRM_PIPELINE_ID=${{ secrets.AMOCRM_PIPELINE_ID }}"
+              echo "AMOCRM_STATUS_ID=${{ secrets.AMOCRM_STATUS_ID }}"
+            } > .env.production
+
+            mkdir -p "$DEPLOY_PATH/data/wwwroot/uploads"
+            chmod -R a+rwX "$DEPLOY_PATH/data/wwwroot" 2>/dev/null || true
+
+            if docker compose version >/dev/null 2>&1; then
+              docker compose -f docker-compose.production.yml --env-file .env.production up -d --build --remove-orphans
+            else
+              docker-compose -f docker-compose.production.yml --env-file .env.production up -d --build --remove-orphans
+            fi
+            docker image prune -f || true
+            echo "==> ProAqua deploy done"

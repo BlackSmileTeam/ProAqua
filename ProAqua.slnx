@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/ProAqua.Api/ProAqua.Api.csproj" />
+  </Folder>
+  <Folder Name="/mobile/">
+    <Project Path="mobile/ProAqua.App/ProAqua.App.csproj" />
+  </Folder>
+</Solution>

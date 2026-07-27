@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ProAqua.App.Pages.BookingPage"
+             BackgroundColor="{StaticResource MidnightBlue}"
+             Title="Запись">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16">
+            <Label x:Name="TitleLabel" FontSize="24" FontAttributes="Bold" TextColor="White" />
+            <Label Text="Выберите дату" TextColor="{StaticResource Gray300}" FontSize="14" />
+
+            <Border StrokeThickness="0" StrokeShape="RoundRectangle 16" BackgroundColor="{StaticResource Gray900}" Padding="4,0">
+                <DatePicker x:Name="DatePicker"
+                            TextColor="White"
+                            Format="dd-MM-yyyy"
+                            DateSelected="OnDateChanged" />
+            </Border>
+
+            <Label x:Name="SelectedDateLabel"
+                   TextColor="{StaticResource Primary}"
+                   FontAttributes="Bold"
+                   FontSize="15" />
+
+            <Label Text="Свободное время (24 ч)" TextColor="{StaticResource Gray300}" FontSize="14" />
+
+            <ActivityIndicator x:Name="SlotsLoading" IsRunning="False" Color="{StaticResource Primary}" />
+
+            <Label x:Name="NoSlotsLabel"
+                   IsVisible="False"
+                   Text="На эту дату нет свободных слотов. Выберите другой день."
+                   TextColor="{StaticResource Gray300}"
+                   FontSize="13" />
+
+            <CollectionView x:Name="SlotsList"
+                            SelectionMode="Single"
+                            SelectionChanged="OnSlotSelected"
+                            HeightRequest="220">
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout Orientation="Vertical" Span="3" HorizontalItemSpacing="10" VerticalItemSpacing="10" />
+                </CollectionView.ItemsLayout>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border StrokeThickness="1.5"
+                                Stroke="{StaticResource Primary}"
+                                StrokeShape="RoundRectangle 12"
+                                BackgroundColor="{StaticResource Gray900}"
+                                Padding="12,10">
+                            <Label Text="{Binding TimeText}"
+                                   HorizontalTextAlignment="Center"
+                                   TextColor="White"
+                                   FontAttributes="Bold"
+                                   FontSize="15" />
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <Label x:Name="SelectedSlotLabel"
+                   TextColor="{StaticResource Secondary}"
+                   FontSize="13"
+                   IsVisible="False" />
+
+            <Button x:Name="ConfirmButton"
+                    Text="Подтвердить запись"
+                    Clicked="OnConfirm"
+                    IsEnabled="False"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="{StaticResource PrimaryDarkText}"
+                    CornerRadius="14"
+                    HeightRequest="52" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,1 @@
+-- Устарело: используйте create_deploy_user.sql + schema_proaqua.sql

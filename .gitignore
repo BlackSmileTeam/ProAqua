@@ -1,0 +1,9 @@
+**/.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+.env
+.env.production
+*.user
+.DS_Store

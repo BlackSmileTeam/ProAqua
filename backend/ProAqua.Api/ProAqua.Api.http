@@ -1,0 +1,6 @@
+@ProAqua.Api_HostAddress = http://localhost:5291
+
+GET {{ProAqua.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

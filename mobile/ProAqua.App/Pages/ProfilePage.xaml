@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ProAqua.App.Pages.ProfilePage"
+             BackgroundColor="{StaticResource MidnightBlue}"
+             Title="Профиль"
+             Shell.NavBarIsVisible="False">
+    <ScrollView>
+        <VerticalStackLayout Padding="20,16,20,28" Spacing="18">
+
+            <Label Text="Профиль"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   TextColor="White" />
+
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="14">
+                <Border x:Name="AvatarBorder"
+                        StrokeThickness="2"
+                        Stroke="{StaticResource Primary}"
+                        StrokeShape="RoundRectangle 36"
+                        WidthRequest="72"
+                        HeightRequest="72"
+                        BackgroundColor="{StaticResource Gray900}"
+                        Padding="0">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnAvatarTapped" />
+                    </Border.GestureRecognizers>
+                    <Grid>
+                        <Image x:Name="AvatarImage" Source="login_icon.png" Aspect="AspectFill" />
+                        <Border StrokeThickness="0"
+                                StrokeShape="RoundRectangle 36"
+                                BackgroundColor="#99000000"
+                                VerticalOptions="End"
+                                HeightRequest="22">
+                            <Label Text="изменить"
+                                   FontSize="9"
+                                   TextColor="White"
+                                   HorizontalTextAlignment="Center"
+                                   VerticalTextAlignment="Center" />
+                        </Border>
+                    </Grid>
+                </Border>
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                    <Label x:Name="NameLabel" FontSize="20" FontAttributes="Bold" TextColor="White" />
+                    <Label x:Name="PhoneLabel" FontSize="14" TextColor="{StaticResource Gray300}" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" Padding="0">
+                <Grid>
+                    <Image Source="hero_wash.png" Aspect="AspectFill" Opacity="0.18" />
+                    <BoxView Color="#F0001C2B" />
+                    <VerticalStackLayout Padding="18" Spacing="12">
+                        <HorizontalStackLayout Spacing="8">
+                            <Image Source="icon_loyalty.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center" />
+                            <Label Text="Уровень лояльности"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray300}"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <Label x:Name="LevelLabel"
+                               FontSize="26"
+                               FontAttributes="Bold"
+                               TextColor="{StaticResource Primary}" />
+
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="6" VerticalOptions="Center">
+                                <Label Text="Ваши баллы"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray300}" />
+                                <Label x:Name="PointsLabel"
+                                       FontSize="32"
+                                       FontAttributes="Bold"
+                                       TextColor="White" />
+                                <ProgressBar x:Name="LevelProgress"
+                                             Progress="0.35"
+                                             ProgressColor="{StaticResource Primary}"
+                                             BackgroundColor="{StaticResource Gray600}"
+                                             HeightRequest="8" />
+                                <Label x:Name="NextLevelLabel"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray300}" />
+                            </VerticalStackLayout>
+                            <Border Grid.Column="1"
+                                    StrokeThickness="0"
+                                    StrokeShape="RoundRectangle 16"
+                                    BackgroundColor="#2614B8A6"
+                                    Padding="12,10"
+                                    VerticalOptions="Center">
+                                <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
+                                    <Label Text="баллов"
+                                           FontSize="10"
+                                           TextColor="{StaticResource Gray300}"
+                                           HorizontalTextAlignment="Center" />
+                                    <Label x:Name="PointsBadgeLabel"
+                                           FontSize="18"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Primary}"
+                                           HorizontalTextAlignment="Center" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </Grid>
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <VerticalStackLayout Spacing="10">
+                <HorizontalStackLayout Spacing="8">
+                    <Image Source="icon_referral.png" WidthRequest="22" HeightRequest="22" VerticalOptions="Center" />
+                    <Label Text="Пригласи друга"
+                           FontSize="17"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+                <Label Text="Дарим бонусы вам и вашему другу"
+                       TextColor="{StaticResource Gray300}"
+                       FontSize="13"
+                       Margin="0,-4,0,0" />
+
+                <Border StrokeThickness="1.5"
+                        Stroke="{StaticResource Primary}"
+                        StrokeShape="RoundRectangle 16"
+                        BackgroundColor="{StaticResource Gray900}"
+                        Padding="16">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Ваш реферальный код"
+                                   FontSize="12"
+                                   TextColor="{StaticResource Gray400}" />
+                            <Label x:Name="ReferralCodeLabel"
+                                   FontSize="22"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource Primary}" />
+                        </VerticalStackLayout>
+                        <ImageButton Grid.Column="1"
+                                     Source="icon_copy.png"
+                                     WidthRequest="36"
+                                     HeightRequest="36"
+                                     BackgroundColor="Transparent"
+                                     Clicked="OnCopyReferral"
+                                     VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+                <Label x:Name="ReferralCountLabel"
+                       FontSize="13"
+                       TextColor="{StaticResource Gray300}" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Имя в профиле" FontSize="13" TextColor="{StaticResource Gray400}" />
+                <Border StrokeThickness="0" StrokeShape="RoundRectangle 16" BackgroundColor="{StaticResource Gray900}" Padding="14,2">
+                    <Entry x:Name="NameEntry"
+                           Placeholder="Как к вам обращаться"
+                           TextColor="White"
+                           PlaceholderColor="{StaticResource Gray400}"
+                           BackgroundColor="Transparent"
+                           HeightRequest="46" />
+                </Border>
+                <Button Text="Сохранить имя"
+                        Clicked="OnSaveName"
+                        BackgroundColor="{StaticResource OffBlack}"
+                        TextColor="{StaticResource Primary}"
+                        BorderColor="{StaticResource Gray600}"
+                        BorderWidth="1"
+                        CornerRadius="14"
+                        HeightRequest="44" />
+            </VerticalStackLayout>
+
+            <Border StrokeThickness="0"
+                    StrokeShape="RoundRectangle 16"
+                    BackgroundColor="{StaticResource Gray900}"
+                    Padding="14">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnChangePasswordTapped" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Image Source="icon_lock.png" WidthRequest="24" HeightRequest="24" VerticalOptions="Center" />
+                    <Label Grid.Column="1"
+                           Text="Сменить пароль"
+                           TextColor="White"
+                           FontSize="15"
+                           VerticalOptions="Center" />
+                    <Label Grid.Column="2"
+                           Text="›"
+                           FontSize="24"
+                           TextColor="{StaticResource Gray400}"
+                           VerticalOptions="Center" />
+                </Grid>
+            </Border>
+
+            <Button Text="Выйти из аккаунта"
+                    Clicked="OnLogout"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Primary}"
+                    BorderColor="{StaticResource Primary}"
+                    BorderWidth="1.5"
+                    CornerRadius="16"
+                    HeightRequest="50"
+                    Margin="0,8,0,0" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
