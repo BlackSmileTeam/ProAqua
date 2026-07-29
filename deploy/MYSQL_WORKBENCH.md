@@ -1,24 +1,28 @@
 # MySQL: Workbench user + схема ProAqua
 
-## 1. По SSH (под root) — пользователь Workbench `deploy`
+## Прямое подключение без SSH (рекомендуется вам сейчас)
 
-Скопируйте и выполните:
+См. подробности: [`MYSQL_DIRECT_WORKBENCH.md`](MYSQL_DIRECT_WORKBENCH.md)
 
-```sql
-CREATE USER IF NOT EXISTS 'deploy'@'%' IDENTIFIED BY 'DeployWb_ChangeMe_2026!';
-CREATE USER IF NOT EXISTS 'deploy'@'localhost' IDENTIFIED BY 'DeployWb_ChangeMe_2026!';
+Кратко — на сервере под **root**:
 
-GRANT ALL PRIVILEGES ON *.* TO 'deploy'@'%' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO 'deploy'@'localhost' WITH GRANT OPTION;
-
-FLUSH PRIVILEGES;
+```bash
+sudo mysql -u root -p < backend/ProAqua.Api/Database/fix_deploy_remote_access.sql
 ```
 
-Или файл: `create_deploy_user.sql`.
+Workbench: **Standard TCP/IP** → Host `139.100.225.234` → User `deploy` → Password `DeployWb_ChangeMe_2026!`
+
+---
+
+## 1. По SSH (под root) — пользователь Workbench `deploy`
+
+Скопируйте и выполните файл `fix_deploy_remote_access.sql` (он сбрасывает пароль принудительно).
+
+Старый `CREATE USER IF NOT EXISTS` **не меняет пароль**, если пользователь уже был — из‑за этого часто бывает Access denied.
 
 ## 2. Схема приложения
 
-Файл: `schema_proaqua.sql` — создаёт БД `ProAqua`, пользователя приложения `ProAqua`, все таблицы и seed.
+Файл: `schema_proaqua.sql` — создаёт БД `proaqua`, пользователя приложения `proaqua`, все таблицы и seed.
 
 ```bash
 sudo mysql -u root -p < schema_proaqua.sql
@@ -26,16 +30,11 @@ sudo mysql -u root -p < schema_proaqua.sql
 
 ## 3. Workbench с ПК
 
-**Безопаснее — SSH-туннель:**
+**Прямое (без SSH):** Host `139.100.225.234:3306`, User `deploy`, пароль из скрипта.
 
-- Method: Standard TCP/IP over SSH  
-- SSH: `deploy@139.100.225.234`  
-- MySQL: `127.0.0.1:3306`  
-- User: `deploy` / `DeployWb_ChangeMe_2026!`
-
-**Прямое подключение** (если открыт 3306): Host `139.100.225.234`, User `deploy`.
+**Через SSH-туннель (если 3306 закрыт):** Method TCP/IP over SSH → SSH `deploy@139.100.225.234` → MySQL `127.0.0.1:3306` → User MySQL `deploy`.
 
 ## 4. Приложение
 
-Логин БД приложения: `ProAqua` / `ProAquaApp_ChangeMe_2026!`  
-База: `ProAqua` на `139.100.225.234` (в Development) или `host.docker.internal` (контейнер на сервере).
+Логин БД приложения: `proaqua` / `ProAquaApp_ChangeMe_2026!`  
+База: `proaqua` на `139.100.225.234`.

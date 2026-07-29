@@ -6,7 +6,7 @@
              Title="ПроАква"
              Shell.NavBarIsVisible="False">
     <VerticalStackLayout Padding="28" Spacing="18" VerticalOptions="Center">
-        <Image Source="brand_drop.png" WidthRequest="64" HeightRequest="64" HorizontalOptions="Center" />
+        <Image Source="app-icon.png" WidthRequest="64" HeightRequest="64" HorizontalOptions="Center" />
         <Label Text="ПроАква" FontSize="36" FontAttributes="Bold" TextColor="{StaticResource Primary}" HorizontalTextAlignment="Center" />
         <Label Text="Мойка и детейлинг"
                TextColor="{StaticResource Gray300}"

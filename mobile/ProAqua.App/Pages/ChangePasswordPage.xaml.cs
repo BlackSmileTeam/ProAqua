@@ -1,3 +1,5 @@
+using ProAqua.App.Services;
+
 namespace ProAqua.App.Pages;
 
 public partial class ChangePasswordPage : ContentPage
@@ -13,8 +15,7 @@ public partial class ChangePasswordPage : ContentPage
 
     private async void OnCancelClicked(object? sender, EventArgs e)
     {
-        if (Navigation.NavigationStack.Count > 1)
-            await Navigation.PopAsync();
+        await Nav.PopAsync();
     }
 
     private async void OnSaveClicked(object? sender, EventArgs e)
@@ -23,23 +24,27 @@ public partial class ChangePasswordPage : ContentPage
         var neu = NewEntry.Text ?? string.Empty;
         if (neu != (ConfirmEntry.Text ?? string.Empty))
         {
-            ErrorLabel.Text = "Пароли не совпадают";
+            await Ui.ErrorAsync("Пароли не совпадают");
             return;
         }
 
         try
         {
-            await App.Api.ChangePasswordAsync(CurrentEntry.Text ?? string.Empty, neu);
+            await Ui.RunBusyAsync(
+                () => App.Api.ChangePasswordAsync(CurrentEntry.Text ?? string.Empty, neu),
+                "Сохраняем…");
+
             Preferences.Default.Set("must_change_password", false);
+            await Ui.ForceClearBusyAsync();
             if (_isForced)
             {
                 if (Application.Current?.Windows.FirstOrDefault() is { } window)
                     window.Page = new AppShell();
             }
-            else if (Navigation.NavigationStack.Count > 1)
+            else if (Nav.CanPop)
             {
-                await DisplayAlert("Готово", "Пароль обновлён", "OK");
-                await Navigation.PopAsync();
+                await Ui.InfoAsync("Готово", "Пароль обновлён");
+                await Nav.PopAsync();
             }
             else if (Application.Current?.Windows.FirstOrDefault() is { } window)
             {
@@ -48,7 +53,7 @@ public partial class ChangePasswordPage : ContentPage
         }
         catch (Exception ex)
         {
-            ErrorLabel.Text = ex.Message;
+            await Ui.ErrorAsync(ex.Message);
         }
     }
 

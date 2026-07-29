@@ -23,7 +23,8 @@ public enum VehicleType
     Sedan = 0,
     Crossover = 1,
     Suv = 2,
-    Van = 3
+    /// <summary>Внедорожник XL (ранее Van).</summary>
+    SuvXl = 3
 }
 
 public class AppUser
@@ -71,8 +72,31 @@ public class WashService
     public decimal PriceFrom { get; set; }
     public string? ImageUrl { get; set; }
     public string? BeforeAfterImageUrl { get; set; }
+    /// <summary>Короткое пояснение "для чего" нужна услуга.</summary>
+    public string? Purpose { get; set; }
+    /// <summary>Расширенное описание/детали (можно HTML/таблицы).</summary>
+    public string? DetailsHtml { get; set; }
+    /// <summary>Бинарные данные картинки услуги (хранится в БД).</summary>
+    public byte[]? ImageData { get; set; }
+    public string? ImageContentType { get; set; } = "image/jpeg";
+    /// <summary>null = группа в каталоге; иначе Id родительской услуги.</summary>
+    public Guid? ParentId { get; set; }
+    public WashService? Parent { get; set; }
+    public List<WashService> Variants { get; set; } = [];
+    public decimal? PriceSedan { get; set; }
+    public decimal? PriceCrossover { get; set; }
+    public decimal? PriceSuv { get; set; }
+    public decimal? PriceSuvXl { get; set; }
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; }
+
+    public decimal PriceFor(VehicleType type) => type switch
+    {
+        VehicleType.Crossover => PriceCrossover ?? PriceFrom,
+        VehicleType.Suv => PriceSuv ?? PriceFrom,
+        VehicleType.SuvXl => PriceSuvXl ?? PriceFrom,
+        _ => PriceSedan ?? PriceFrom
+    };
 }
 
 public class WorkBay
@@ -134,4 +158,20 @@ public class PromoCode
     public int? BonusPoints { get; set; }
     public DateTime? ValidUntil { get; set; }
     public bool IsActive { get; set; } = true;
+}
+
+/// <summary>Маркетинговая акция с периодом действия.</summary>
+public class Promotion
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public DateTime StartsAt { get; set; }
+    public DateTime EndsAt { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string? ImageUrl { get; set; }
+    /// <summary>Бинарные данные картинки акции (хранится в БД).</summary>
+    public byte[]? ImageData { get; set; }
+    public string? ImageContentType { get; set; } = "image/jpeg";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

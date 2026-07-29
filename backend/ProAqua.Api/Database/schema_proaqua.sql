@@ -60,6 +60,8 @@ CREATE TABLE IF NOT EXISTS Services (
   PriceFrom DECIMAL(10,2) NOT NULL,
   ImageUrl VARCHAR(512) NULL,
   BeforeAfterImageUrl VARCHAR(512) NULL,
+  ImageData LONGBLOB NULL,
+  ImageContentType VARCHAR(100) NULL,
   IsActive TINYINT(1) NOT NULL DEFAULT 1,
   SortOrder INT NOT NULL DEFAULT 0,
   PRIMARY KEY (Id)
@@ -167,3 +169,28 @@ VALUES
 INSERT IGNORE INTO PromoCodes (Id, Code, PercentOff, BonusPoints, ValidUntil, IsActive)
 VALUES
 ('d1111111-1111-1111-1111-111111111111', 'WELCOME10', 10, 50, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 1 YEAR), 1);
+
+CREATE TABLE IF NOT EXISTS Promotions (
+  Id char(36) NOT NULL,
+  Title varchar(200) NOT NULL,
+  Description longtext NOT NULL,
+  StartsAt datetime(6) NOT NULL,
+  EndsAt datetime(6) NOT NULL,
+  IsActive tinyint(1) NOT NULL,
+  ImageUrl varchar(500) NULL,
+  ImageData longblob NULL,
+  ImageContentType varchar(100) NULL,
+  CreatedAt datetime(6) NOT NULL,
+  PRIMARY KEY (Id),
+  KEY IX_Promotions_EndsAt (EndsAt)
+) CHARACTER SET utf8mb4;
+
+INSERT IGNORE INTO Promotions (Id, Title, Description, StartsAt, EndsAt, IsActive, ImageUrl, CreatedAt)
+VALUES
+('e1111111-1111-1111-1111-111111111111', 'Комплекс со скидкой 15%',
+ 'При записи на комплексную мойку в будни — скидка 15%.',
+ UTC_TIMESTAMP(6), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 30 DAY), 1, NULL, UTC_TIMESTAMP(6)),
+('e2222222-2222-2222-2222-222222222222', 'Керамика — бонусные баллы x2',
+ 'За керамическое покрытие начисляем двойные баллы лояльности.',
+ UTC_TIMESTAMP(6), DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 45 DAY), 1, NULL, UTC_TIMESTAMP(6));
+

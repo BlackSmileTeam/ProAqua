@@ -5,13 +5,15 @@ namespace ProAqua.App.Pages;
 public partial class BookingPage : ContentPage
 {
     private readonly ServiceItem _service;
+    private readonly int _vehicleType;
     private List<SlotItem> _slots = [];
     private DateTime? _selectedStartUtc;
 
-    public BookingPage(ServiceItem service)
+    public BookingPage(ServiceItem service, int vehicleType = 0)
     {
         InitializeComponent();
         _service = service;
+        _vehicleType = vehicleType;
         TitleLabel.Text = service.Title;
         DatePicker.Date = DateTime.Today.AddDays(1);
         DatePicker.MinimumDate = DateTime.Today;
@@ -23,6 +25,15 @@ public partial class BookingPage : ContentPage
         await LoadSlotsAsync();
     }
 
+    protected override bool OnBackButtonPressed()
+    {
+        OnBack(null, EventArgs.Empty);
+        return true;
+    }
+
+    private async void OnBack(object? sender, EventArgs e)
+        => await Nav.PopAsync();
+
     private async void OnDateChanged(object? sender, DateChangedEventArgs e)
         => await LoadSlotsAsync();
 
@@ -30,38 +41,33 @@ public partial class BookingPage : ContentPage
     {
         try
         {
-            SlotsLoading.IsRunning = true;
-            SlotsLoading.IsVisible = true;
             NoSlotsLabel.IsVisible = false;
-            SlotsList.IsVisible = true;
+            SlotsList.IsVisible = false;
             _selectedStartUtc = null;
             ConfirmButton.IsEnabled = false;
             SelectedSlotLabel.IsVisible = false;
 
             var localDate = DatePicker.Date;
-            SelectedDateLabel.Text = $"Выбрано: {BookingFormat.Date(localDate)}";
+            SelectedDateLabel.Text = $"Выбрано: {BookingFormat.Date(localDate)} · загрузка…";
 
             var slots = await App.Api.GetSlotsAsync(_service.Id, localDate) ?? [];
             _slots = slots.Where(s => s.Available).Select(s => new SlotItem { StartAtUtc = s.StartAt }).ToList();
 
+            SelectedDateLabel.Text = $"Выбрано: {BookingFormat.Date(localDate)}";
             SlotsList.ItemsSource = _slots;
             NoSlotsLabel.IsVisible = _slots.Count == 0;
             SlotsList.IsVisible = _slots.Count > 0;
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ошибка", ex.Message, "OK");
-        }
-        finally
-        {
-            SlotsLoading.IsRunning = false;
-            SlotsLoading.IsVisible = false;
+            SelectedDateLabel.Text = $"Выбрано: {BookingFormat.Date(DatePicker.Date)}";
+            await Ui.ErrorAsync(ex.Message);
         }
     }
 
-    private void OnSlotSelected(object? sender, SelectionChangedEventArgs e)
+    private void OnSlotTapped(object? sender, TappedEventArgs e)
     {
-        if (e.CurrentSelection.FirstOrDefault() is not SlotItem slot)
+        if (e.Parameter is not SlotItem slot)
             return;
 
         _selectedStartUtc = slot.StartAtUtc;
@@ -74,31 +80,40 @@ public partial class BookingPage : ContentPage
     {
         if (_selectedStartUtc is null)
         {
-            await DisplayAlert("Время", "Выберите свободный слот из списка", "OK");
+            await Ui.InfoAsync("Время", "Выберите свободный слот из списка");
             return;
         }
 
         try
         {
             ConfirmButton.IsEnabled = false;
-            var booking = await App.Api.CreateBookingAsync(_service.Id, _selectedStartUtc.Value);
-            var when = BookingFormat.FormatDateTime(booking.StartAt.ToLocalTime());
+            var booking = await Ui.RunBusyAsync(
+                () => App.Api.CreateBookingAsync(_service.Id, _selectedStartUtc.Value, _vehicleType),
+                "Создаём запись…");
 
-            var go = await DisplayAlert(
+            if (booking is null)
+            {
+                ConfirmButton.IsEnabled = true;
+                return;
+            }
+
+            var when = BookingFormat.FormatDateTime(booking.StartAt.ToLocalTime());
+            var go = await Ui.ConfirmAsync(
                 "Запись создана",
                 $"{_service.Title}\n{when}\n\nСтатус: {BookingFormat.StatusRu(booking.Status)}",
                 "Мои записи",
-                "На главную");
+                "На главную",
+                centerText: true);
 
             if (go)
                 await Shell.Current.GoToAsync("//history");
             else
-                await Navigation.PopAsync();
+                await Nav.PopAsync();
         }
         catch (Exception ex)
         {
             ConfirmButton.IsEnabled = true;
-            await DisplayAlert("Не удалось записаться", ex.Message, "OK");
+            await Ui.ErrorAsync(ex.Message, "Не удалось записаться");
         }
     }
 }

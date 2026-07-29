@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ProAqua.App.Pages.ServicesCatalogPage"
+             BackgroundColor="{StaticResource MidnightBlue}"
+             Title="Услуги"
+             Shell.NavBarIsVisible="True">
+
+    <RefreshView x:Name="Refresh" Refreshing="OnRefresh">
+        <ScrollView>
+            <VerticalStackLayout x:Name="CategoriesHost"
+                                 Padding="16,12,16,28"
+                                 Spacing="20" />
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

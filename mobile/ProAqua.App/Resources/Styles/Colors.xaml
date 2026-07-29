@@ -39,4 +39,10 @@
     <SolidColorBrush x:Key="Gray600Brush" Color="{StaticResource Gray600}"/>
     <SolidColorBrush x:Key="Gray900Brush" Color="{StaticResource Gray900}"/>
     <SolidColorBrush x:Key="Gray950Brush" Color="{StaticResource Gray950}"/>
+
+    <!-- Рамка карточек: Primary сверху → более тёмный снизу -->
+    <LinearGradientBrush x:Key="CardStrokeBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{StaticResource Primary}" Offset="0" />
+        <GradientStop Color="#0A4A55" Offset="1" />
+    </LinearGradientBrush>
 </ResourceDictionary>

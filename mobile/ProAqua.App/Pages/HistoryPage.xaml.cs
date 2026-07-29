@@ -42,17 +42,39 @@ public partial class HistoryPage : ContentPage
             UpcomingList.ItemsSource = upcoming;
             PastList.ItemsSource = past;
             PastHeader.IsVisible = upcoming.Count > 0 || past.Count > 0;
+            NoBookingsLabel.IsVisible = upcoming.Count == 0 && past.Count == 0;
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Ошибка", ex.Message, "OK");
+            await Ui.ErrorAsync(ex.Message);
         }
     }
 
     private async void OnRepeat(object? sender, EventArgs e)
     {
         if (sender is not Button { CommandParameter: BookingListItem item }) return;
-        await Navigation.PushAsync(new BookingPage(
-            new ServiceItem(item.Source.ServiceId, item.ServiceTitle, string.Empty, string.Empty, 60, 0, null, null)));
+
+        try
+        {
+            var service = await Ui.RunBusyAsync(
+                () => ResolveServiceAsync(item),
+                "Открываем запись…");
+
+            await Nav.PushAsync(new BookingPage(service ?? FallbackService(item)));
+        }
+        catch (Exception ex)
+        {
+            await Ui.ErrorAsync(ex.Message);
+        }
     }
+
+    private static async Task<ServiceItem> ResolveServiceAsync(BookingListItem item)
+    {
+        var services = await App.Api.GetServicesAsync() ?? [];
+        return services.FirstOrDefault(s => s.Id == item.Source.ServiceId)
+               ?? FallbackService(item);
+    }
+
+    private static ServiceItem FallbackService(BookingListItem item)
+        => new(item.Source.ServiceId, item.ServiceTitle, string.Empty, string.Empty, 60, 0, null, null, null, null);
 }

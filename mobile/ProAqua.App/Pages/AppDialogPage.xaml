@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ProAqua.App.Pages.AppDialogPage"
+             BackgroundColor="#CC001018"
+             Shell.NavBarIsVisible="False">
+    <Grid Padding="28">
+        <Border StrokeThickness="1.5"
+                Stroke="{StaticResource Primary}"
+                StrokeShape="RoundRectangle 22"
+                BackgroundColor="{StaticResource Gray900}"
+                VerticalOptions="Center"
+                HorizontalOptions="Fill"
+                MaximumWidthRequest="420"
+                Padding="22">
+            <VerticalStackLayout Spacing="14">
+                <Border x:Name="AccentBar"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 4"
+                        BackgroundColor="{StaticResource Primary}"
+                        HeightRequest="4"
+                        HorizontalOptions="Start"
+                        WidthRequest="48" />
+
+                <Label x:Name="TitleLabel"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalTextAlignment="Start" />
+
+                <Label x:Name="MessageLabel"
+                       FontSize="14"
+                       TextColor="{StaticResource Gray200}"
+                       HorizontalTextAlignment="Start"
+                       LineBreakMode="WordWrap" />
+
+                <Grid x:Name="ButtonsGrid"
+                      ColumnDefinitions="*,*"
+                      ColumnSpacing="10"
+                      Margin="0,8,0,0">
+                    <Button x:Name="SecondaryButton"
+                            Text="Отмена"
+                            Clicked="OnSecondary"
+                            BackgroundColor="Transparent"
+                            TextColor="{StaticResource Gray300}"
+                            BorderColor="{StaticResource Gray600}"
+                            BorderWidth="1"
+                            CornerRadius="14"
+                            HeightRequest="48"
+                            IsVisible="False" />
+                    <Button x:Name="PrimaryButton"
+                            Grid.Column="1"
+                            Text="OK"
+                            Clicked="OnPrimary"
+                            BackgroundColor="{StaticResource Primary}"
+                            TextColor="{StaticResource PrimaryDarkText}"
+                            FontAttributes="Bold"
+                            CornerRadius="14"
+                            HeightRequest="48" />
+                </Grid>
+            </VerticalStackLayout>
+        </Border>
+    </Grid>
+</ContentPage>

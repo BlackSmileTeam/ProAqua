@@ -43,6 +43,7 @@ public sealed class BookingListItem
   public string DateTimeText => BookingFormat.FormatDateTime(StartAtLocal);
   public string StatusRu { get; init; } = string.Empty;
   public bool IsUpcoming { get; init; }
+  public bool IsCompleted { get; init; }
   public BookingItem Source { get; init; } = null!;
 
   public static BookingListItem From(BookingItem b) => new()
@@ -52,6 +53,7 @@ public sealed class BookingListItem
     StartAtUtc = b.StartAt,
     StatusRu = BookingFormat.StatusRu(b.Status),
     IsUpcoming = BookingFormat.IsUpcoming(b),
+    IsCompleted = string.Equals(b.Status?.Trim(), "Completed", StringComparison.OrdinalIgnoreCase),
     Source = b
   };
 }

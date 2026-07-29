@@ -13,162 +13,172 @@
                    FontAttributes="Bold"
                    TextColor="White" />
 
-            <Grid ColumnDefinitions="72,*" ColumnSpacing="14">
+            <Grid ColumnDefinitions="96,*" ColumnSpacing="14">
                 <Border x:Name="AvatarBorder"
-                        StrokeThickness="2"
-                        Stroke="{StaticResource Primary}"
-                        StrokeShape="RoundRectangle 36"
-                        WidthRequest="72"
-                        HeightRequest="72"
+                        StrokeThickness="1"
+                        Stroke="{StaticResource CardStrokeBrush}"
+                        StrokeShape="RoundRectangle 48"
+                        WidthRequest="96"
+                        HeightRequest="96"
                         BackgroundColor="{StaticResource Gray900}"
                         Padding="0">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Tapped="OnAvatarTapped" />
+                        <PointerGestureRecognizer PointerEntered="OnAvatarPointerEntered"
+                                                  PointerExited="OnAvatarPointerExited" />
                     </Border.GestureRecognizers>
                     <Grid>
                         <Image x:Name="AvatarImage" Source="login_icon.png" Aspect="AspectFill" />
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 36"
+                        <Border x:Name="AvatarEditHint"
+                                IsVisible="False"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 0,0,48,48"
                                 BackgroundColor="#99000000"
                                 VerticalOptions="End"
-                                HeightRequest="22">
+                                HeightRequest="26">
                             <Label Text="изменить"
-                                   FontSize="9"
+                                   FontSize="10"
                                    TextColor="White"
                                    HorizontalTextAlignment="Center"
                                    VerticalTextAlignment="Center" />
                         </Border>
                     </Grid>
                 </Border>
-                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="4">
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="6">
                     <Label x:Name="NameLabel" FontSize="20" FontAttributes="Bold" TextColor="White" />
                     <Label x:Name="PhoneLabel" FontSize="14" TextColor="{StaticResource Gray300}" />
                 </VerticalStackLayout>
             </Grid>
 
-            <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" Padding="0">
+            <Border StrokeThickness="1"
+                    Stroke="{StaticResource CardStrokeBrush}"
+                    StrokeShape="RoundRectangle 18"
+                    BackgroundColor="#001C2B"
+                    Padding="0"
+                    HeightRequest="188">
                 <Grid>
-                    <Image Source="hero_wash.png" Aspect="AspectFill" Opacity="0.18" />
-                    <BoxView Color="#F0001C2B" />
-                    <VerticalStackLayout Padding="18" Spacing="12">
-                        <HorizontalStackLayout Spacing="8">
-                            <Image Source="icon_loyalty.png" WidthRequest="20" HeightRequest="20" VerticalOptions="Center" />
-                            <Label Text="Уровень лояльности"
-                                   FontSize="12"
-                                   TextColor="{StaticResource Gray300}"
-                                   VerticalOptions="Center" />
-                        </HorizontalStackLayout>
+                    <!-- Full-bleed background image so content (including level strip) sits on top of the picture -->
+                    <Image Source="loyalty_jeep.png"
+                           Aspect="AspectFill"
+                           HorizontalOptions="Fill"
+                           VerticalOptions="Fill" />
 
-                        <Label x:Name="LevelLabel"
-                               FontSize="26"
-                               FontAttributes="Bold"
-                               TextColor="{StaticResource Primary}" />
+                    <!-- Fade the image smoothly into the app background -->
+                    <BoxView InputTransparent="True">
+                        <BoxView.Background>
+                            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                <GradientStop Color="#F2001C2B" Offset="0" />
+                                <GradientStop Color="#CC001C2B" Offset="0.52" />
+                                <GradientStop Color="#66001C2B" Offset="0.78" />
+                                <GradientStop Color="#33001C2B" Offset="1" />
+                            </LinearGradientBrush>
+                        </BoxView.Background>
+                    </BoxView>
 
-                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                            <VerticalStackLayout Spacing="6" VerticalOptions="Center">
-                                <Label Text="Ваши баллы"
-                                       FontSize="12"
+                    <VerticalStackLayout Padding="14,12,10,16" Spacing="8">
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                            <Image x:Name="LevelIcon"
+                                   Source="icon_level_guest.png"
+                                   WidthRequest="56"
+                                   HeightRequest="68"
+                                   Aspect="AspectFit"
+                                   VerticalOptions="Center"
+                                   BackgroundColor="Transparent" />
+
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                <Label Text="Уровень лояльности"
+                                       FontSize="11"
                                        TextColor="{StaticResource Gray300}" />
-                                <Label x:Name="PointsLabel"
-                                       FontSize="32"
+                                <Label x:Name="LevelLabel"
+                                       FontSize="20"
                                        FontAttributes="Bold"
-                                       TextColor="White" />
-                                <ProgressBar x:Name="LevelProgress"
-                                             Progress="0.35"
-                                             ProgressColor="{StaticResource Primary}"
-                                             BackgroundColor="{StaticResource Gray600}"
-                                             HeightRequest="8" />
+                                       TextColor="{StaticResource Primary}" />
+                                <Grid x:Name="LevelProgressTrack"
+                                      HeightRequest="7"
+                                      SizeChanged="OnLevelProgressTrackSizeChanged">
+                                    <Border StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 4"
+                                            BackgroundColor="{StaticResource Gray600}" />
+                                    <Border x:Name="LevelProgressFill"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 4"
+                                            BackgroundColor="{StaticResource Primary}"
+                                            HorizontalOptions="Start"
+                                            WidthRequest="40" />
+                                </Grid>
                                 <Label x:Name="NextLevelLabel"
-                                       FontSize="12"
+                                       FontSize="11"
                                        TextColor="{StaticResource Gray300}" />
                             </VerticalStackLayout>
-                            <Border Grid.Column="1"
-                                    StrokeThickness="0"
-                                    StrokeShape="RoundRectangle 16"
-                                    BackgroundColor="#2614B8A6"
-                                    Padding="12,10"
-                                    VerticalOptions="Center">
-                                <VerticalStackLayout Spacing="2" HorizontalOptions="Center">
-                                    <Label Text="баллов"
-                                           FontSize="10"
-                                           TextColor="{StaticResource Gray300}"
-                                           HorizontalTextAlignment="Center" />
-                                    <Label x:Name="PointsBadgeLabel"
-                                           FontSize="18"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource Primary}"
-                                           HorizontalTextAlignment="Center" />
-                                </VerticalStackLayout>
-                            </Border>
                         </Grid>
-                    </VerticalStackLayout>
-                </Grid>
-            </Border>
 
-            <VerticalStackLayout Spacing="10">
-                <HorizontalStackLayout Spacing="8">
-                    <Image Source="icon_referral.png" WidthRequest="22" HeightRequest="22" VerticalOptions="Center" />
-                    <Label Text="Пригласи друга"
-                           FontSize="17"
-                           FontAttributes="Bold"
-                           TextColor="White"
-                           VerticalOptions="Center" />
-                </HorizontalStackLayout>
-                <Label Text="Дарим бонусы вам и вашему другу"
-                       TextColor="{StaticResource Gray300}"
-                       FontSize="13"
-                       Margin="0,-4,0,0" />
+                        <BoxView HeightRequest="1" Color="#40FFFFFF" HorizontalOptions="Fill" />
 
-                <Border StrokeThickness="1.5"
-                        Stroke="{StaticResource Primary}"
-                        StrokeShape="RoundRectangle 16"
-                        BackgroundColor="{StaticResource Gray900}"
-                        Padding="16">
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                        <VerticalStackLayout Spacing="4">
-                            <Label Text="Ваш реферальный код"
+                        <VerticalStackLayout Spacing="2" Margin="0,0,0,4">
+                            <Label Text="Ваши бонусы"
                                    FontSize="12"
-                                   TextColor="{StaticResource Gray400}" />
-                            <Label x:Name="ReferralCodeLabel"
+                                   TextColor="{StaticResource Gray300}" />
+                            <Label x:Name="PointsLabel"
                                    FontSize="22"
                                    FontAttributes="Bold"
                                    TextColor="{StaticResource Primary}" />
                         </VerticalStackLayout>
-                        <ImageButton Grid.Column="1"
-                                     Source="icon_copy.png"
-                                     WidthRequest="36"
-                                     HeightRequest="36"
-                                     BackgroundColor="Transparent"
-                                     Clicked="OnCopyReferral"
-                                     VerticalOptions="Center" />
-                    </Grid>
-                </Border>
-                <Label x:Name="ReferralCountLabel"
-                       FontSize="13"
-                       TextColor="{StaticResource Gray300}" />
-            </VerticalStackLayout>
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
 
-            <VerticalStackLayout Spacing="8">
-                <Label Text="Имя в профиле" FontSize="13" TextColor="{StaticResource Gray400}" />
-                <Border StrokeThickness="0" StrokeShape="RoundRectangle 16" BackgroundColor="{StaticResource Gray900}" Padding="14,2">
-                    <Entry x:Name="NameEntry"
-                           Placeholder="Как к вам обращаться"
-                           TextColor="White"
-                           PlaceholderColor="{StaticResource Gray400}"
-                           BackgroundColor="Transparent"
-                           HeightRequest="46" />
-                </Border>
-                <Button Text="Сохранить имя"
-                        Clicked="OnSaveName"
-                        BackgroundColor="{StaticResource OffBlack}"
-                        TextColor="{StaticResource Primary}"
-                        BorderColor="{StaticResource Gray600}"
-                        BorderWidth="1"
-                        CornerRadius="14"
-                        HeightRequest="44" />
-            </VerticalStackLayout>
+            <Border StrokeThickness="1"
+                    Stroke="{StaticResource CardStrokeBrush}"
+                    StrokeShape="RoundRectangle 18"
+                    BackgroundColor="#140A2F3F"
+                    Padding="16">
+                <VerticalStackLayout Spacing="12">
+                    <HorizontalStackLayout Spacing="10">
+                        <Image Source="icon_referral.png"
+                               WidthRequest="36"
+                               HeightRequest="36"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                            <Label Text="Реферальная программа"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Пригласите друга — бонусы вам и ему"
+                                   TextColor="{StaticResource Gray300}"
+                                   FontSize="12" />
+                        </VerticalStackLayout>
+                    </HorizontalStackLayout>
 
-            <Border StrokeThickness="0"
+                    <Border StrokeThickness="1"
+                            Stroke="{StaticResource CardStrokeBrush}"
+                            StrokeDashArray="6,4"
+                            StrokeShape="RoundRectangle 14"
+                            BackgroundColor="Transparent"
+                            Padding="14,12">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <VerticalStackLayout Spacing="4" VerticalOptions="Center">
+                                <Label Text="Ваш реферальный код"
+                                       FontSize="11"
+                                       TextColor="{StaticResource Gray400}" />
+                                <Label x:Name="ReferralCodeLabel"
+                                       FontSize="22"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource Primary}" />
+                            </VerticalStackLayout>
+                            <ImageButton Grid.Column="1"
+                                         Source="icon_copy.png"
+                                         WidthRequest="34"
+                                         HeightRequest="34"
+                                         BackgroundColor="Transparent"
+                                         Clicked="OnCopyReferral"
+                                         VerticalOptions="Center" />
+                        </Grid>
+                    </Border>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border StrokeThickness="1"
+                    Stroke="{StaticResource CardStrokeBrush}"
                     StrokeShape="RoundRectangle 16"
                     BackgroundColor="{StaticResource Gray900}"
                     Padding="14">
@@ -190,15 +200,24 @@
                 </Grid>
             </Border>
 
-            <Button Text="Выйти из аккаунта"
-                    Clicked="OnLogout"
+            <Border StrokeThickness="1"
+                    Stroke="{StaticResource CardStrokeBrush}"
+                    StrokeShape="RoundRectangle 16"
                     BackgroundColor="Transparent"
-                    TextColor="{StaticResource Primary}"
-                    BorderColor="{StaticResource Primary}"
-                    BorderWidth="1.5"
-                    CornerRadius="16"
                     HeightRequest="50"
-                    Margin="0,8,0,0" />
+                    Padding="14,0"
+                    Margin="0,8,0,0">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnLogout" />
+                </Border.GestureRecognizers>
+                <HorizontalStackLayout Spacing="10" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image Source="icon_logout.png" WidthRequest="22" HeightRequest="22" VerticalOptions="Center" />
+                    <Label Text="Выйти из аккаунта"
+                           TextColor="{StaticResource Primary}"
+                           FontSize="16"
+                           VerticalOptions="Center" />
+                </HorizontalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

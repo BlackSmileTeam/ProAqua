@@ -74,22 +74,39 @@ public class AmoCrmSyncService(IOptions<AmoCrmOptions> options, IHttpClientFacto
     }
 }
 
-public class AuthService(ProAquaDbContext db, IOptions<JwtOptions> jwtOptions)
+public class AuthService(ProAquaDbContext db, IOptions<JwtOptions> jwtOptions, ILogger<AuthService> logger)
 {
     public async Task<(bool ok, string? token, AppUser? user, string message)> LoginAsync(string phone, string password, CancellationToken ct = default)
     {
+        var sourcePhone = phone;
         phone = NormalizePhone(phone);
         password = (password ?? string.Empty).Trim();
         if (password.Length < 4)
+        {
+            logger.LogWarning("Login rejected: short password phone={Phone}", phone);
             return (false, null, null, "Введите пароль");
+        }
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == phone && u.IsActive, ct);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Phone == phone, ct);
         if (user is null)
+        {
+            logger.LogWarning("Login rejected: user not found phone={Phone} source={SourcePhone}", phone, sourcePhone);
             return (false, null, null, "Неверный телефон или пароль");
+        }
+
+        if (!user.IsActive)
+        {
+            logger.LogWarning("Login rejected: inactive user userId={UserId} phone={Phone}", user.Id, phone);
+            return (false, null, null, "Неверный телефон или пароль");
+        }
 
         if (string.IsNullOrWhiteSpace(user.PinHash) || !BCrypt.Net.BCrypt.Verify(password, user.PinHash))
+        {
+            logger.LogWarning("Login rejected: password mismatch userId={UserId} phone={Phone}", user.Id, phone);
             return (false, null, null, "Неверный телефон или пароль");
+        }
 
+        logger.LogInformation("Login accepted userId={UserId} phone={Phone}", user.Id, phone);
         return (true, CreateJwt(user), user, "OK");
     }
 
@@ -278,13 +295,17 @@ public class BookingService(ProAquaDbContext db, IAmoCrmSync amoCrm, IPushSender
         DateTime startAt,
         Guid? vehicleId,
         string? comment,
+        VehicleType vehicleType = VehicleType.Sedan,
         CancellationToken ct = default)
     {
         var service = await db.Services.FirstOrDefaultAsync(s => s.Id == serviceId && s.IsActive, ct);
         if (service is null) return (false, null, "Услуга не найдена");
+        if (service.ParentId is null && await db.Services.AnyAsync(v => v.ParentId == service.Id && v.IsActive, ct))
+            return (false, null, "Выберите конкретную подуслугу");
 
         startAt = DateTime.SpecifyKind(startAt, DateTimeKind.Utc);
-        var endAt = startAt.AddMinutes(service.DurationMinutes);
+        var duration = Math.Max(30, service.DurationMinutes);
+        var endAt = startAt.AddMinutes(duration);
 
         var overlap = await db.Bookings.AnyAsync(b =>
             b.Status != BookingStatus.Cancelled &&
@@ -302,7 +323,7 @@ public class BookingService(ProAquaDbContext db, IAmoCrmSync amoCrm, IPushSender
             EndAt = endAt,
             Comment = comment,
             Status = BookingStatus.Confirmed,
-            FinalPrice = service.PriceFrom
+            FinalPrice = service.PriceFor(vehicleType)
         };
         db.Bookings.Add(booking);
         await db.SaveChangesAsync(ct);

@@ -14,6 +14,13 @@
                        TextColor="White"
                        Margin="20,8,20,0" />
 
+                <Label x:Name="NoBookingsLabel"
+                       IsVisible="False"
+                       Text="Записи отсутствуют"
+                       FontSize="14"
+                       TextColor="{StaticResource Gray300}"
+                       Margin="20,0,20,0" />
+
                 <VerticalStackLayout x:Name="UpcomingSection" IsVisible="False" Spacing="10" Margin="16,0">
                     <Label Text="Предстоящие"
                            FontSize="16"
@@ -26,26 +33,22 @@
                             <DataTemplate>
                                 <Border Padding="16"
                                         Margin="0,0,0,10"
-                                        StrokeThickness="1.5"
-                                        Stroke="{StaticResource Primary}"
-                                        StrokeShape="RoundRectangle 18"
-                                        BackgroundColor="#1A0F2A36">
+                                        StrokeThickness="1"
+                                        Stroke="{StaticResource CardStrokeBrush}"
+                                        StrokeShape="RoundRectangle 16"
+                                        BackgroundColor="#140A2F3F">
                                     <VerticalStackLayout Spacing="8">
-                                        <Grid ColumnDefinitions="*,Auto">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                             <Label Text="{Binding ServiceTitle}"
                                                    FontAttributes="Bold"
                                                    TextColor="White"
                                                    FontSize="16" />
-                                            <Border Grid.Column="1"
-                                                    StrokeThickness="0"
-                                                    StrokeShape="RoundRectangle 10"
-                                                    BackgroundColor="#3326C6DA"
-                                                    Padding="8,4">
-                                                <Label Text="{Binding StatusRu}"
-                                                       TextColor="{StaticResource Primary}"
-                                                       FontSize="11"
-                                                       FontAttributes="Bold" />
-                                            </Border>
+                                            <Label Grid.Column="1"
+                                                   Text="{Binding StatusRu}"
+                                                   TextColor="{StaticResource Primary}"
+                                                   FontSize="11"
+                                                   FontAttributes="Bold"
+                                                   VerticalOptions="Center" />
                                         </Grid>
                                         <Label Text="{Binding DateTimeText, StringFormat='Ждём вас: {0}'}"
                                                TextColor="White"
@@ -87,25 +90,22 @@
                             <DataTemplate>
                                 <Border Padding="16"
                                         Margin="0,0,0,10"
-                                        StrokeThickness="0"
-                                        StrokeShape="RoundRectangle 18"
-                                        BackgroundColor="{StaticResource Gray900}">
+                                        StrokeThickness="1"
+                                        Stroke="{StaticResource CardStrokeBrush}"
+                                        StrokeShape="RoundRectangle 16"
+                                        BackgroundColor="#140A2F3F">
                                     <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
-                                        <Grid ColumnDefinitions="*,Auto">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                             <Label Text="{Binding ServiceTitle}"
                                                    FontAttributes="Bold"
                                                    TextColor="White"
                                                    FontSize="16" />
-                                            <Border Grid.Column="1"
-                                                    StrokeThickness="0"
-                                                    StrokeShape="RoundRectangle 10"
-                                                    BackgroundColor="#3326C6DA"
-                                                    Padding="8,4">
-                                                <Label Text="{Binding StatusRu}"
-                                                       TextColor="{StaticResource Primary}"
-                                                       FontSize="11"
-                                                       FontAttributes="Bold" />
-                                            </Border>
+                                            <Label Grid.Column="1"
+                                                   Text="{Binding StatusRu}"
+                                                   TextColor="{StaticResource Primary}"
+                                                   FontSize="11"
+                                                   FontAttributes="Bold"
+                                                   VerticalOptions="Center" />
                                         </Grid>
                                         <Label Grid.Row="1"
                                                Text="{Binding DateTimeText}"
@@ -113,6 +113,7 @@
                                                FontSize="13" />
                                         <Button Grid.Row="2"
                                                 Text="Повторить запись"
+                                                IsVisible="{Binding IsCompleted}"
                                                 Clicked="OnRepeat"
                                                 CommandParameter="{Binding .}"
                                                 BackgroundColor="Transparent"

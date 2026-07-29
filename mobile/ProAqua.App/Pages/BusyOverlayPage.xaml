@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ProAqua.App.Pages.BusyOverlayPage"
+             BackgroundColor="#B3001018"
+             Shell.NavBarIsVisible="False">
+    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="16" Padding="32">
+        <Border StrokeThickness="0"
+                StrokeShape="RoundRectangle 24"
+                BackgroundColor="#F00A2F3F"
+                Padding="28"
+                WidthRequest="160"
+                HeightRequest="160">
+            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="14">
+                <ActivityIndicator IsRunning="True"
+                                   Color="{StaticResource Primary}"
+                                   WidthRequest="48"
+                                   HeightRequest="48"
+                                   HorizontalOptions="Center" />
+                <Label x:Name="MessageLabel"
+                       Text="Загрузка…"
+                       TextColor="White"
+                       FontSize="14"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </Border>
+    </VerticalStackLayout>
+</ContentPage>

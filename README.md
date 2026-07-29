@@ -1,6 +1,17 @@
 # ПроАква (ProAqua)
 
-Мобильное приложение (MAUI: Android + iOS), Web API (.NET 8) и веб-админка для **мойки и детейлинг-центра**: запись, статусы, лояльность, рефералы, синхронизация с AMOCRM.
+Корневая папка проекта: `E:\Project\Cursor\ProAqua`
+
+| Путь | Назначение |
+|------|------------|
+| `backend/ProAqua.Api` | Web API |
+| `mobile/ProAqua.App` | MAUI Android/iOS |
+| `admin` | Веб-админка |
+| `ProAqua.slnx` | Solution для Visual Studio |
+
+Открывать в VS: `E:\Project\Cursor\ProAqua\ProAqua.slnx`
+
+Мойка и детейлинг-центр: запись, статусы, лояльность, рефералы, синхронизация с AMOCRM.
 
 Оплаты в приложении **нет** — только запись и сервис.
 

@@ -87,12 +87,34 @@ using (var scope = app.Services.CreateScope())
     await EnsurePinHashColumnAsync(db);
     await EnsureMustChangePasswordColumnAsync(db);
     await EnsureAvatarUrlColumnAsync(db);
+    await EnsurePromotionsTableAsync(db);
+    await EnsureMediaBlobColumnsAsync(db);
     await DbSeeder.SeedAsync(db);
 }
 
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
+app.Use(async (ctx, next) =>
+{
+    var log = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Http");
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    log.LogInformation("→ {Method} {Path}{Query} ip={Ip}",
+        ctx.Request.Method,
+        ctx.Request.Path,
+        ctx.Request.QueryString,
+        ctx.Connection.RemoteIpAddress);
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        sw.Stop();
+        log.LogInformation("← {Method} {Path} {Status} {Ms}ms",
+            ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
+    }
+});
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -197,4 +219,78 @@ static async Task EnsureAvatarUrlColumnAsync(ProAquaDbContext db)
     {
         Console.WriteLine($"EnsureAvatarUrlColumn skipped: {ex.Message}");
     }
+}
+
+static async Task EnsurePromotionsTableAsync(ProAquaDbContext db)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS Promotions (
+              Id char(36) NOT NULL,
+              Title varchar(200) NOT NULL,
+              Description longtext NOT NULL,
+              StartsAt datetime(6) NOT NULL,
+              EndsAt datetime(6) NOT NULL,
+              IsActive tinyint(1) NOT NULL,
+              ImageUrl varchar(500) NULL,
+              ImageData longblob NULL,
+              ImageContentType varchar(100) NULL,
+              CreatedAt datetime(6) NOT NULL,
+              PRIMARY KEY (Id),
+              KEY IX_Promotions_EndsAt (EndsAt)
+            ) CHARACTER SET utf8mb4
+            """);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"EnsurePromotionsTable skipped: {ex.Message}");
+    }
+}
+
+static async Task EnsureMediaBlobColumnsAsync(ProAquaDbContext db)
+{
+    try
+    {
+        await EnsureColumnAsync(db, "Services", "ImageData", "longblob NULL");
+        await EnsureColumnAsync(db, "Services", "ImageContentType", "varchar(100) NULL");
+        await EnsureColumnAsync(db, "Services", "ParentId", "char(36) NULL");
+        await EnsureColumnAsync(db, "Services", "PriceSedan", "decimal(10,2) NULL");
+        await EnsureColumnAsync(db, "Services", "PriceCrossover", "decimal(10,2) NULL");
+        await EnsureColumnAsync(db, "Services", "PriceSuv", "decimal(10,2) NULL");
+        await EnsureColumnAsync(db, "Services", "PriceSuvXl", "decimal(10,2) NULL");
+        await EnsureColumnAsync(db, "Services", "Purpose", "varchar(400) NULL");
+        await EnsureColumnAsync(db, "Services", "DetailsHtml", "longtext NULL");
+        await EnsureColumnAsync(db, "Promotions", "ImageData", "longblob NULL");
+        await EnsureColumnAsync(db, "Promotions", "ImageContentType", "varchar(100) NULL");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"EnsureMediaBlobColumns skipped: {ex.Message}");
+    }
+}
+
+static async Task EnsureColumnAsync(ProAquaDbContext db, string table, string column, string definition)
+{
+    var conn = db.Database.GetDbConnection();
+    if (conn.State != System.Data.ConnectionState.Open)
+        await db.Database.OpenConnectionAsync();
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = """
+        SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = @table
+          AND COLUMN_NAME = @column
+        """;
+    var pTable = cmd.CreateParameter();
+    pTable.ParameterName = "@table";
+    pTable.Value = table;
+    cmd.Parameters.Add(pTable);
+    var pCol = cmd.CreateParameter();
+    pCol.ParameterName = "@column";
+    pCol.Value = column;
+    cmd.Parameters.Add(pCol);
+    var exists = Convert.ToInt32(await cmd.ExecuteScalarAsync()) > 0;
+    if (!exists)
+        await db.Database.ExecuteSqlRawAsync($"ALTER TABLE `{table}` ADD COLUMN `{column}` {definition}");
 }

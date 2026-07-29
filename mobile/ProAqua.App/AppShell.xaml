@@ -22,6 +22,10 @@
                       Icon="tab_home.png"
                       ContentTemplate="{DataTemplate pages:HomePage}"
                       Route="home" />
+        <ShellContent Title="Акции"
+                      Icon="tab_promotions.png"
+                      ContentTemplate="{DataTemplate pages:PromotionsPage}"
+                      Route="promotions" />
         <ShellContent Title="Записи"
                       Icon="tab_history.png"
                       ContentTemplate="{DataTemplate pages:HistoryPage}"

@@ -14,12 +14,6 @@ public partial class App : Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        if (string.IsNullOrWhiteSpace(Api.Token))
-            return new Window(new Pages.LoginPage());
-
-        if (Api.MustChangePassword)
-            return new Window(new Pages.ChangePasswordPage(isForced: true));
-
-        return new Window(new AppShell());
+        return new Window(new Pages.StartupPage());
     }
 }

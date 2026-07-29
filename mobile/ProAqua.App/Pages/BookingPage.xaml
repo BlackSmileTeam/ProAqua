@@ -3,9 +3,33 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="ProAqua.App.Pages.BookingPage"
              BackgroundColor="{StaticResource MidnightBlue}"
-             Title="Запись">
-    <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="16">
+             Title="Запись"
+             Shell.NavBarIsVisible="False">
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" Padding="16,12,16,0" ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <Border StrokeThickness="0"
+                    StrokeShape="RoundRectangle 12"
+                    BackgroundColor="#140A2F3F"
+                    WidthRequest="40"
+                    HeightRequest="40">
+                <Label Text="←"
+                       FontSize="22"
+                       TextColor="{StaticResource Primary}"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBack" />
+                </Border.GestureRecognizers>
+            </Border>
+            <Label Grid.Column="1"
+                   Text="Запись"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   VerticalOptions="Center" />
+        </Grid>
+    <ScrollView Grid.Row="1">
+        <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
             <Label x:Name="TitleLabel" FontSize="24" FontAttributes="Bold" TextColor="White" />
             <Label Text="Выберите дату" TextColor="{StaticResource Gray300}" FontSize="14" />
 
@@ -23,8 +47,6 @@
 
             <Label Text="Свободное время (24 ч)" TextColor="{StaticResource Gray300}" FontSize="14" />
 
-            <ActivityIndicator x:Name="SlotsLoading" IsRunning="False" Color="{StaticResource Primary}" />
-
             <Label x:Name="NoSlotsLabel"
                    IsVisible="False"
                    Text="На эту дату нет свободных слотов. Выберите другой день."
@@ -32,8 +54,7 @@
                    FontSize="13" />
 
             <CollectionView x:Name="SlotsList"
-                            SelectionMode="Single"
-                            SelectionChanged="OnSlotSelected"
+                            SelectionMode="None"
                             HeightRequest="220">
                 <CollectionView.ItemsLayout>
                     <GridItemsLayout Orientation="Vertical" Span="3" HorizontalItemSpacing="10" VerticalItemSpacing="10" />
@@ -45,6 +66,9 @@
                                 StrokeShape="RoundRectangle 12"
                                 BackgroundColor="{StaticResource Gray900}"
                                 Padding="12,10">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnSlotTapped" CommandParameter="{Binding .}" />
+                            </Border.GestureRecognizers>
                             <Label Text="{Binding TimeText}"
                                    HorizontalTextAlignment="Center"
                                    TextColor="White"
@@ -70,4 +94,5 @@
                     HeightRequest="52" />
         </VerticalStackLayout>
     </ScrollView>
+    </Grid>
 </ContentPage>
