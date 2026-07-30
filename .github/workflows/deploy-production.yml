@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: proaqua-production-deploy
   cancel-in-progress: true
@@ -41,7 +44,7 @@ jobs:
               exit 1
             fi
 
-            REPO_SSH_URL="git@github.com:${{ github.repository }}.git"
+            REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             REPO_NAME="${{ github.event.repository.name }}"
             BRANCH="main"
             DEPLOY_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
@@ -52,14 +55,10 @@ jobs:
 
             if [ ! -d .git ]; then
               git init
-              git remote add origin "$REPO_SSH_URL"
+              git remote add origin "$REPO_URL"
             else
-              git remote set-url origin "$REPO_SSH_URL"
+              git remote set-url origin "$REPO_URL"
             fi
-
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
-            ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
 
             git fetch --prune origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
             git checkout -f -B "$BRANCH" "origin/$BRANCH"
@@ -131,7 +130,7 @@ jobs:
               exit 1
             fi
 
-            REPO_SSH_URL="git@github.com:${{ github.repository }}.git"
+            REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             REPO_NAME="${{ github.event.repository.name }}"
             BRANCH="main"
             DEPLOY_PATH="${{ secrets.EDGE_DEPLOY_PATH }}"
@@ -143,14 +142,10 @@ jobs:
 
             if [ ! -d .git ]; then
               git init
-              git remote add origin "$REPO_SSH_URL"
+              git remote add origin "$REPO_URL"
             else
-              git remote set-url origin "$REPO_SSH_URL"
+              git remote set-url origin "$REPO_URL"
             fi
-
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
-            ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
 
             git fetch --prune origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
             git checkout -f -B "$BRANCH" "origin/$BRANCH"
