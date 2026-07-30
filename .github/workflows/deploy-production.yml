@@ -30,26 +30,107 @@ jobs:
           command_timeout: 30m
           script_stop: true
           script: |
-            set -eo pipefail
+            set -euo pipefail
+            trap 'echo "ERROR: deploy failed at line $LINENO (exit $?)" >&2' ERR
+
             TARGET="PROD"
             echo "==> Deploy target: $TARGET (${{ secrets.PROD_HOST }})"
+            echo "==> whoami=$(whoami) HOME=$HOME pwd=$(pwd)"
 
+            # --- Required secrets: DB_CONNECTION_STRING, JWT_KEY (+ SSH via action inputs) ---
+            echo "==> Resolving DB connection string secret"
             CONN='${{ secrets.DB_CONNECTION_STRING }}'
-            if [ -z "$CONN" ]; then CONN='${{ secrets.APP_CONNECTION_STRING }}'; fi
             if [ -z "$CONN" ]; then
-              echo "ERROR: set org/repo secret DB_CONNECTION_STRING or APP_CONNECTION_STRING (and grant this repository access)"
+              echo "ERROR: set repository secret DB_CONNECTION_STRING (MySQL connection string)"
+              exit 1
+            fi
+            echo "==> Connection string secret present (length=${#CONN})"
+
+            JWT_KEY_VAL='${{ secrets.JWT_KEY }}'
+            if [ -z "$JWT_KEY_VAL" ]; then
+              echo "ERROR: set repository secret JWT_KEY"
               exit 1
             fi
 
+            # Parse key=value pairs from ADO.NET-style connection string (case-insensitive keys).
+            # Prefer Password/User/Database from DB_CONNECTION_STRING so API + MySQL container stay aligned.
+            conn_get() {
+              local key="$1"
+              # Replace ; with newlines, then take first matching Key=Value (no pipeline subshell).
+              local normalized
+              normalized="$(printf '%s' "$CONN" | tr ';' '\n')"
+              while IFS= read -r part; do
+                part="${part#"${part%%[![:space:]]*}"}"
+                part="${part%"${part##*[![:space:]]}"}"
+                [ -z "$part" ] && continue
+                k="${part%%=*}"
+                v="${part#*=}"
+                k="$(printf '%s' "$k" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+                if [ "$k" = "$key" ]; then
+                  printf '%s' "$v"
+                  return 0
+                fi
+              done <<EOF
+$normalized
+EOF
+              return 0
+            }
+
+            MYSQL_APP_USER="$(conn_get user)"
+            if [ -z "$MYSQL_APP_USER" ]; then MYSQL_APP_USER="$(conn_get uid)"; fi
+            if [ -z "$MYSQL_APP_USER" ]; then MYSQL_APP_USER=proaqua; fi
+
+            MYSQL_APP_PASSWORD="$(conn_get password)"
+            if [ -z "$MYSQL_APP_PASSWORD" ]; then MYSQL_APP_PASSWORD="$(conn_get pwd)"; fi
+            if [ -z "$MYSQL_APP_PASSWORD" ]; then
+              echo "ERROR: DB_CONNECTION_STRING has no Password=… — cannot derive MYSQL_APP_PASSWORD"
+              exit 1
+            fi
+
+            MYSQL_DATABASE="$(conn_get database)"
+            if [ -z "$MYSQL_DATABASE" ]; then MYSQL_DATABASE="$(conn_get initialcatalog)"; fi
+            if [ -z "$MYSQL_DATABASE" ]; then MYSQL_DATABASE=proaqua; fi
+
+            # Root password: stable documented default (not a GitHub secret).
+            # First-time MySQL volume init uses this; changing it later does NOT update an existing volume.
+            # Default matches .env.production.example — do not randomize on each deploy.
+            MYSQL_ROOT_PASSWORD="RootMysql_ChangeMe_2026!"
+
+            echo "==> Derived MySQL: database=$MYSQL_DATABASE user=$MYSQL_APP_USER (password from DB_CONNECTION_STRING)"
+            echo "==> MYSQL_ROOT_PASSWORD: using stable workflow default (see deploy/GITHUB_SECRETS.md)"
+
+            # Backend talks to the compose service name "mysql" on internal port 3306.
+            APP_CONNECTION_STRING="Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_APP_USER};Password=${MYSQL_APP_PASSWORD};CharSet=utf8mb4;SslMode=None;AllowPublicKeyRetrieval=True"
+
             REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-            REPO_NAME="${{ github.event.repository.name }}"
             BRANCH="main"
-            DEPLOY_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
-            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="$HOME/$REPO_NAME"; fi
+            # Default: $HOME/ProAqua (no PROD_DEPLOY_PATH required). Empty secret → fallback.
+            REQUESTED_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
+            FALLBACK_PATH="$HOME/ProAqua"
+            if [ -z "$REQUESTED_PATH" ]; then
+              DEPLOY_PATH="$FALLBACK_PATH"
+            else
+              DEPLOY_PATH="$REQUESTED_PATH"
+            fi
+            echo "==> Requested deploy path: '${REQUESTED_PATH:-<empty → $FALLBACK_PATH>}'"
 
-            mkdir -p "$DEPLOY_PATH"
+            echo "==> Ensuring deploy directory exists: $DEPLOY_PATH"
+            if ! mkdir -p "$DEPLOY_PATH" 2>/tmp/proaqua_mkdir.err; then
+              echo "WARN: cannot create $DEPLOY_PATH: $(cat /tmp/proaqua_mkdir.err)"
+              if [ "$DEPLOY_PATH" != "$FALLBACK_PATH" ]; then
+                echo "==> Falling back to $FALLBACK_PATH"
+                DEPLOY_PATH="$FALLBACK_PATH"
+                mkdir -p "$DEPLOY_PATH"
+              else
+                echo "ERROR: deploy user cannot write $DEPLOY_PATH"
+                echo "HINT: leave PROD_DEPLOY_PATH unset (default \$HOME/ProAqua), or set a writable path"
+                exit 1
+              fi
+            fi
             cd "$DEPLOY_PATH"
+            echo "==> Using deploy path: $(pwd)"
 
+            echo "==> Syncing git ($BRANCH)"
             if [ ! -d .git ]; then
               git init
               git remote add origin "$REPO_URL"
@@ -59,40 +140,82 @@ jobs:
 
             git fetch --prune origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
             git checkout -f -B "$BRANCH" "origin/$BRANCH"
+            echo "==> HEAD=$(git rev-parse --short HEAD)"
 
+            # Optional port secrets → sensible defaults (no GitHub secret required)
             FE_PORT='${{ secrets.PROD_FRONTEND_PORT }}'
             if [ -z "$FE_PORT" ]; then FE_PORT=55512; fi
             BE_PORT='${{ secrets.PROD_BACKEND_PORT }}'
             if [ -z "$BE_PORT" ]; then BE_PORT=55511; fi
+            MYSQL_PORT=3307
+            echo "==> Ports frontend=$FE_PORT backend=$BE_PORT mysql_host=$MYSQL_PORT"
 
+            echo "==> Writing .env.production"
             umask 077
             {
               echo "FRONTEND_PORT=$FE_PORT"
               echo "BACKEND_PORT=$BE_PORT"
-              echo "MYSQL_PORT=3307"
-              echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}"
-              echo "MYSQL_DATABASE=proaqua"
-              echo "MYSQL_APP_USER=proaqua"
-              echo "MYSQL_APP_PASSWORD=${{ secrets.MYSQL_APP_PASSWORD }}"
-              echo "APP_CONNECTION_STRING=$CONN"
-              echo "JWT_KEY=${{ secrets.JWT_KEY }}"
+              echo "MYSQL_PORT=$MYSQL_PORT"
+              echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD"
+              echo "MYSQL_DATABASE=$MYSQL_DATABASE"
+              echo "MYSQL_APP_USER=$MYSQL_APP_USER"
+              echo "MYSQL_APP_PASSWORD=$MYSQL_APP_PASSWORD"
+              echo "APP_CONNECTION_STRING=$APP_CONNECTION_STRING"
+              echo "JWT_KEY=$JWT_KEY_VAL"
               echo "JWT_ISSUER=ProAquaApi"
               echo "JWT_AUDIENCE=ProAquaClient"
-              echo "PUSH_PROVIDER=${{ secrets.PUSH_PROVIDER }}"
-              echo "AMOCRM_ENABLED=${{ secrets.AMOCRM_ENABLED }}"
-              echo "AMOCRM_BASE_URL=${{ secrets.AMOCRM_BASE_URL }}"
-              echo "AMOCRM_ACCESS_TOKEN=${{ secrets.AMOCRM_ACCESS_TOKEN }}"
-              echo "AMOCRM_PIPELINE_ID=${{ secrets.AMOCRM_PIPELINE_ID }}"
-              echo "AMOCRM_STATUS_ID=${{ secrets.AMOCRM_STATUS_ID }}"
+              echo "PUSH_PROVIDER=Dev"
+              echo "AMOCRM_ENABLED=false"
+              echo "AMOCRM_BASE_URL="
+              echo "AMOCRM_ACCESS_TOKEN="
+              echo "AMOCRM_PIPELINE_ID="
+              echo "AMOCRM_STATUS_ID="
+              echo "VITE_API_URL="
             } > .env.production
 
+            if [ ! -s .env.production ]; then
+              echo "ERROR: .env.production is empty"
+              exit 1
+            fi
+            # Non-secret sanity checks (do not print secret values)
+            if ! grep -q '^MYSQL_ROOT_PASSWORD=.\+' .env.production; then
+              echo "ERROR: MYSQL_ROOT_PASSWORD is empty"
+              exit 1
+            fi
+            if ! grep -q '^MYSQL_APP_PASSWORD=.\+' .env.production; then
+              echo "ERROR: MYSQL_APP_PASSWORD is empty (parse DB_CONNECTION_STRING Password=)"
+              exit 1
+            fi
+            if ! grep -q '^JWT_KEY=.\+' .env.production; then
+              echo "ERROR: JWT_KEY secret is empty"
+              exit 1
+            fi
+            if ! grep -q '^APP_CONNECTION_STRING=.\+' .env.production; then
+              echo "ERROR: APP_CONNECTION_STRING is empty"
+              exit 1
+            fi
+            echo "==> .env.production written ($(wc -l < .env.production) lines)"
+
+            echo "==> Preparing uploads directory"
             mkdir -p "$DEPLOY_PATH/data/wwwroot/uploads"
             chmod -R a+rwX "$DEPLOY_PATH/data/wwwroot" 2>/dev/null || true
 
+            echo "==> Checking docker access"
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "ERROR: docker not installed for $(whoami)"
+              exit 1
+            fi
+            if ! docker info >/dev/null 2>&1; then
+              echo "ERROR: cannot talk to Docker daemon as $(whoami)"
+              echo "HINT: sudo usermod -aG docker $(whoami)  # then re-login / new SSH session"
+              exit 1
+            fi
+
+            echo "==> docker compose up -d --build"
             if docker compose version >/dev/null 2>&1; then
               docker compose -f docker-compose.production.yml --env-file .env.production up -d --build --remove-orphans
             else
               docker-compose -f docker-compose.production.yml --env-file .env.production up -d --build --remove-orphans
             fi
             docker image prune -f || true
-            echo "==> ProAqua deploy done on $TARGET"
+            echo "==> ProAqua deploy done on $TARGET at $(pwd)"
