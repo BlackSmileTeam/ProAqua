@@ -71,8 +71,8 @@ jobs:
                   return 0
                 fi
               done <<EOF
-$normalized
-EOF
+            $normalized
+            EOF
               return 0
             }
 
