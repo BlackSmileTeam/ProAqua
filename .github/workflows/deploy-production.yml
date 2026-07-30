@@ -45,7 +45,7 @@ jobs:
             REPO_NAME="${{ github.event.repository.name }}"
             BRANCH="main"
             DEPLOY_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
-            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/$REPO_NAME"; fi
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="$HOME/$REPO_NAME"; fi
 
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
@@ -136,7 +136,7 @@ jobs:
             BRANCH="main"
             DEPLOY_PATH="${{ secrets.EDGE_DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="${{ secrets.PROD_DEPLOY_PATH }}"; fi
-            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/$REPO_NAME"; fi
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="$HOME/$REPO_NAME"; fi
 
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
