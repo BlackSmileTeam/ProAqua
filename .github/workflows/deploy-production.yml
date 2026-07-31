@@ -80,80 +80,14 @@ jobs:
             echo "==> MYSQL_ROOT_PASSWORD: using stable workflow default (see deploy/GITHUB_SECRETS.md)"
 
             BRANCH="main"
-            # Default: $HOME/ProAqua (no PROD_DEPLOY_PATH required). Empty secret -> fallback.
-            REQUESTED_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
-            FALLBACK_PATH="$HOME/ProAqua"
-            if [ -z "$REQUESTED_PATH" ]; then
-              DEPLOY_PATH="$FALLBACK_PATH"
-            else
-              DEPLOY_PATH="$REQUESTED_PATH"
-            fi
-            if [ -z "$REQUESTED_PATH" ]; then
-              echo "==> Requested deploy path: <empty -> $FALLBACK_PATH>"
-            else
-              echo "==> Requested deploy path: $REQUESTED_PATH"
-            fi
-
-            echo "==> Ensuring deploy directory exists: $DEPLOY_PATH"
-            if ! mkdir -p "$DEPLOY_PATH" 2>/tmp/proaqua_mkdir.err; then
-              echo "WARN: cannot create $DEPLOY_PATH: $(cat /tmp/proaqua_mkdir.err)"
-              if [ "$DEPLOY_PATH" != "$FALLBACK_PATH" ]; then
-                echo "==> Falling back to $FALLBACK_PATH"
-                DEPLOY_PATH="$FALLBACK_PATH"
-                mkdir -p "$DEPLOY_PATH"
-              else
-                echo "ERROR: deploy user cannot write $DEPLOY_PATH"
-                echo "HINT: leave PROD_DEPLOY_PATH unset (default \$HOME/ProAqua), or set a writable path"
-                exit 1
-              fi
-            fi
+            # Path setup + git sync as one base64 bash unit.
+            # appleboy/drone-ssh injects DRONE_SSH_PREV_COMMAND_EXIT_CODE=... between YAML
+            # script lines, which breaks multi-line if/else/clone. Decode+pipe runs atomically.
+            echo "==> Running path+git sync (base64 script)"
+            echo 'c2V0IC1ldW8gcGlwZWZhaWwKCkJSQU5DSD0iJHtCUkFOQ0g6LW1haW59IgpGQUxMQkFDS19QQVRIPSIke0hPTUV9L1Byb0FxdWEiClJFUVVFU1RFRF9QQVRIPSIke1JFUVVFU1RFRF9QQVRIOi19IgoKaWYgWyAteiAiJFJFUVVFU1RFRF9QQVRIIiBdOyB0aGVuCiAgREVQTE9ZX1BBVEg9IiRGQUxMQkFDS19QQVRIIgogIGVjaG8gIj09PiBSZXF1ZXN0ZWQgZGVwbG95IHBhdGg6IDxlbXB0eSAtPiAkRkFMTEJBQ0tfUEFUSD4iCmVsc2UKICBERVBMT1lfUEFUSD0iJFJFUVVFU1RFRF9QQVRIIgogIGVjaG8gIj09PiBSZXF1ZXN0ZWQgZGVwbG95IHBhdGg6ICRSRVFVRVNURURfUEFUSCIKZmkKCmVjaG8gIj09PiBFbnN1cmluZyBkZXBsb3kgZGlyZWN0b3J5IGV4aXN0czogJERFUExPWV9QQVRIIgppZiAhIG1rZGlyIC1wICIkREVQTE9ZX1BBVEgiIDI+L3RtcC9wcm9hcXVhX21rZGlyLmVycjsgdGhlbgogIGVjaG8gIj09PiBFUlJPUjogY2Fubm90IGNyZWF0ZSAkREVQTE9ZX1BBVEg6ICQoY2F0IC90bXAvcHJvYXF1YV9ta2Rpci5lcnIpIiA+JjIKICBpZiBbICIkREVQTE9ZX1BBVEgiICE9ICIkRkFMTEJBQ0tfUEFUSCIgXTsgdGhlbgogICAgZWNobyAiPT0+IEZhbGxpbmcgYmFjayB0byAkRkFMTEJBQ0tfUEFUSCIKICAgIERFUExPWV9QQVRIPSIkRkFMTEJBQ0tfUEFUSCIKICAgIGlmICEgbWtkaXIgLXAgIiRERVBMT1lfUEFUSCI7IHRoZW4KICAgICAgZWNobyAiPT0+IEVSUk9SOiBkZXBsb3kgdXNlciBjYW5ub3Qgd3JpdGUgZmFsbGJhY2sgJERFUExPWV9QQVRIIiA+JjIKICAgICAgZXhpdCAxCiAgICBmaQogIGVsc2UKICAgIGVjaG8gIj09PiBFUlJPUjogZGVwbG95IHVzZXIgY2Fubm90IHdyaXRlICRERVBMT1lfUEFUSCIgPiYyCiAgICBlY2hvICJISU5UOiBsZWF2ZSBQUk9EX0RFUExPWV9QQVRIIHVuc2V0IChkZWZhdWx0IFwkSE9NRS9Qcm9BcXVhKSwgb3Igc2V0IGEgd3JpdGFibGUgcGF0aCIgPiYyCiAgICBleGl0IDEKICBmaQpmaQoKY2QgIiRERVBMT1lfUEFUSCIgfHwgeyBlY2hvICI9PT4gRVJST1I6IGNkIGZhaWxlZCBmb3IgJERFUExPWV9QQVRIIiA+JjI7IGV4aXQgMTsgfQplY2hvICI9PT4gVXNpbmcgZGVwbG95IHBhdGg6ICQocHdkKSIKCmVjaG8gIj09PiBTeW5jaW5nIGdpdCAoJEJSQU5DSCkiCmlmIFsgLXogIiR7R0lUSFVCX1RPS0VOOi19IiBdOyB0aGVuCiAgZWNobyAiPT0+IEVSUk9SOiBHSVRIVUJfVE9LRU4gaXMgZW1wdHkgKHBhc3MgdmlhIGFwcGxlYm95IGVudnMgZnJvbSBnaXRodWIudG9rZW4pIiA+JjIKICBleGl0IDEKZmkKZWNobyAiPT0+IEdJVEhVQl9UT0tFTiBwcmVzZW50IChsZW5ndGg9JHsjR0lUSFVCX1RPS0VOfSkiCmlmIFsgLXogIiR7R0lUSFVCX1JFUE9TSVRPUlk6LX0iIF07IHRoZW4KICBlY2hvICI9PT4gRVJST1I6IEdJVEhVQl9SRVBPU0lUT1JZIGlzIGVtcHR5IiA+JjIKICBleGl0IDEKZmkKZWNobyAiPT0+IEdJVEhVQl9SRVBPU0lUT1JZPSRHSVRIVUJfUkVQT1NJVE9SWSIKaWYgISBjb21tYW5kIC12IGdpdCA+L2Rldi9udWxsIDI+JjE7IHRoZW4KICBlY2hvICI9PT4gRVJST1I6IGdpdCBpcyBub3QgaW5zdGFsbGVkIGZvciAkKHdob2FtaSkiID4mMgogIGV4aXQgMQpmaQoKUkVQT19IVFRQUz0iaHR0cHM6Ly9naXRodWIuY29tLyR7R0lUSFVCX1JFUE9TSVRPUll9LmdpdCIKR0lUX0hUVFBfQVVUSD0iQVVUSE9SSVpBVElPTjogYmVhcmVyICR7R0lUSFVCX1RPS0VOfSIKCiMgQnJva2VuIGxlZnRvdmVyIGZyb20gYSBmYWlsZWQgaW5pdCAoZS5nLiBlbXB0eSAuZ2l0KSAtPiB0cmVhdCBhcyBub24tcmVwbwppZiBbIC1kIC5naXQgXSAmJiAhIGdpdCByZXYtcGFyc2UgLS1naXQtZGlyID4vZGV2L251bGwgMj4mMTsgdGhlbgogIGVjaG8gIj09PiBXQVJOOiAuZ2l0IGV4aXN0cyBidXQgaXMgaW52YWxpZDsgcmVtb3ZpbmcgZm9yIGNsZWFuIHJlLWNsb25lIgogIHJtIC1yZiAuZ2l0CmZpCgpORUVEX0NMT05FPTAKaWYgWyAhIC1kIC5naXQgXTsgdGhlbgogIE5FRURfQ0xPTkU9MQplbGlmICEgZ2l0IHJldi1wYXJzZSAtLWdpdC1kaXIgPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgTkVFRF9DTE9ORT0xCmZpCgppZiBbICIkTkVFRF9DTE9ORSIgLWVxIDEgXTsgdGhlbgogIGVjaG8gIj09PiBnaXQgY2xvbmUgKGRpcmVjdG9yeSBpcyBub3QgYSB1c2FibGUgZ2l0IHJlcG8pIgogIENMT05FX1RNUD0kKG1rdGVtcCAtZCAvdG1wL3Byb2FxdWEtY2xvbmUuWFhYWFhYKQogIGNsZWFudXBfY2xvbmUoKSB7IHJtIC1yZiAiJENMT05FX1RNUCI7IH0KICB0cmFwIGNsZWFudXBfY2xvbmUgRVhJVAogIGlmICEgZ2l0IC1jICJodHRwLmV4dHJhSGVhZGVyPSR7R0lUX0hUVFBfQVVUSH0iIGNsb25lIC0tYnJhbmNoICIkQlJBTkNIIiAtLXNpbmdsZS1icmFuY2ggIiRSRVBPX0hUVFBTIiAiJENMT05FX1RNUC9yZXBvIjsgdGhlbgogICAgZWNobyAiPT0+IEVSUk9SOiBnaXQgY2xvbmUgZmFpbGVkIGZvciAkUkVQT19IVFRQUyAoYnJhbmNoPSRCUkFOQ0gpIiA+JjIKICAgIGV4aXQgMQogIGZpCiAgZWNobyAiPT0+IGNvcHlpbmcgY2xvbmUgaW50byBkZXBsb3kgcGF0aCIKICBpZiBjb21tYW5kIC12IHJzeW5jID4vZGV2L251bGwgMj4mMTsgdGhlbgogICAgaWYgISByc3luYyAtYSAiJENMT05FX1RNUC9yZXBvIi8gIiRERVBMT1lfUEFUSCIvOyB0aGVuCiAgICAgIGVjaG8gIj09PiBFUlJPUjogcnN5bmMgY2xvbmUgaW50byAkREVQTE9ZX1BBVEggZmFpbGVkIiA+JjIKICAgICAgZXhpdCAxCiAgICBmaQogIGVsc2UKICAgIGlmICEgY3AgLWEgIiRDTE9ORV9UTVAvcmVwbyIvLiAiJERFUExPWV9QQVRIIi87IHRoZW4KICAgICAgZWNobyAiPT0+IEVSUk9SOiBjcCBjbG9uZSBpbnRvICRERVBMT1lfUEFUSCBmYWlsZWQiID4mMgogICAgICBleGl0IDEKICAgIGZpCiAgZmkKICBjbGVhbnVwX2Nsb25lCiAgdHJhcCAtIEVYSVQKICBlY2hvICI9PT4gZ2l0IHJlbW90ZSBzZXQtdXJsIChIVFRQUywgbm8gdG9rZW4pIgogIGlmICEgZ2l0IHJlbW90ZSBzZXQtdXJsIG9yaWdpbiAiJFJFUE9fSFRUUFMiIDI+L2Rldi9udWxsOyB0aGVuCiAgICBpZiAhIGdpdCByZW1vdGUgYWRkIG9yaWdpbiAiJFJFUE9fSFRUUFMiOyB0aGVuCiAgICAgIGVjaG8gIj09PiBFUlJPUjogY291bGQgbm90IHNldCBvcmlnaW4gcmVtb3RlIiA+JjIKICAgICAgZXhpdCAxCiAgICBmaQogIGZpCmVsc2UKICBlY2hvICI9PT4gZ2l0IHJlbW90ZSBzZXQtdXJsIChIVFRQUywgbm8gdG9rZW4pIgogIGlmIGdpdCByZW1vdGUgZ2V0LXVybCBvcmlnaW4gPi9kZXYvbnVsbCAyPiYxOyB0aGVuCiAgICBnaXQgcmVtb3RlIHNldC11cmwgb3JpZ2luICIkUkVQT19IVFRQUyIKICBlbHNlCiAgICBnaXQgcmVtb3RlIGFkZCBvcmlnaW4gIiRSRVBPX0hUVFBTIgogIGZpCiAgZWNobyAiPT0+IGdpdCBmZXRjaCIKICBpZiAhIGdpdCAtYyAiaHR0cC5leHRyYUhlYWRlcj0ke0dJVF9IVFRQX0FVVEh9IiBmZXRjaCAtLXBydW5lIG9yaWdpbiAicmVmcy9oZWFkcy8ke0JSQU5DSH06cmVmcy9yZW1vdGVzL29yaWdpbi8ke0JSQU5DSH0iOyB0aGVuCiAgICBlY2hvICI9PT4gRVJST1I6IGdpdCBmZXRjaCBmYWlsZWQgZm9yIG9yaWdpbi8kQlJBTkNIIiA+JjIKICAgIGV4aXQgMQogIGZpCiAgZWNobyAiPT0+IGdpdCByZXNldCAtLWhhcmQgb3JpZ2luLyRCUkFOQ0giCiAgaWYgISBnaXQgY2hlY2tvdXQgLWYgLUIgIiRCUkFOQ0giICJvcmlnaW4vJEJSQU5DSCI7IHRoZW4KICAgIGVjaG8gIj09PiBFUlJPUjogZ2l0IGNoZWNrb3V0IC1CICRCUkFOQ0ggb3JpZ2luLyRCUkFOQ0ggZmFpbGVkIiA+JjIKICAgIGV4aXQgMQogIGZpCiAgaWYgISBnaXQgcmVzZXQgLS1oYXJkICJvcmlnaW4vJEJSQU5DSCI7IHRoZW4KICAgIGVjaG8gIj09PiBFUlJPUjogZ2l0IHJlc2V0IC0taGFyZCBvcmlnaW4vJEJSQU5DSCBmYWlsZWQiID4mMgogICAgZXhpdCAxCiAgZmkKZmkKCmVjaG8gIj09PiBIRUFEPSQoZ2l0IHJldi1wYXJzZSAtLXNob3J0IEhFQUQpIgpwcmludGYgJyVzXG4nICIkREVQTE9ZX1BBVEgiID4gL3RtcC9wcm9hcXVhX2RlcGxveV9wYXRo' | base64 -d | BRANCH="$BRANCH" REQUESTED_PATH="${{ secrets.PROD_DEPLOY_PATH }}" GITHUB_TOKEN="$GITHUB_TOKEN" GITHUB_REPOSITORY="$GITHUB_REPOSITORY" HOME="$HOME" bash
+            DEPLOY_PATH="$(cat /tmp/proaqua_deploy_path)"
             cd "$DEPLOY_PATH"
-            echo "==> Using deploy path: $(pwd)"
-
-            echo "==> Syncing git ($BRANCH)"
-            if [ -z "${GITHUB_TOKEN:-}" ]; then
-              echo "ERROR: GITHUB_TOKEN is empty (pass via appleboy envs from github.token)"
-              exit 1
-            fi
-            if [ -z "${GITHUB_REPOSITORY:-}" ]; then
-              echo "ERROR: GITHUB_REPOSITORY is empty"
-              exit 1
-            fi
-            if ! command -v git >/dev/null 2>&1; then
-              echo "ERROR: git is not installed for $(whoami)"
-              exit 1
-            fi
-
-            # HTTPS remote without token in URL (token must not land in .git/config).
-            REPO_HTTPS="https://github.com/${GITHUB_REPOSITORY}.git"
-            GIT_HTTP_AUTH="AUTHORIZATION: bearer ${GITHUB_TOKEN}"
-
-            if [ ! -d .git ]; then
-              echo "==> git clone (directory is not a git repo)"
-              CLONE_TMP=$(mktemp -d /tmp/proaqua-clone.XXXXXX)
-              git -c "http.extraHeader=${GIT_HTTP_AUTH}" clone --branch "$BRANCH" --single-branch "$REPO_HTTPS" "$CLONE_TMP/repo"
-              echo "==> copying clone into deploy path"
-              if command -v rsync >/dev/null 2>&1; then
-                rsync -a "$CLONE_TMP/repo"/ "$DEPLOY_PATH"/
-              else
-                cp -a "$CLONE_TMP/repo"/. "$DEPLOY_PATH"/
-              fi
-              rm -rf "$CLONE_TMP"
-              echo "==> git remote set-url (HTTPS, no token)"
-              git remote set-url origin "$REPO_HTTPS"
-            else
-              echo "==> git remote set-url (HTTPS, no token)"
-              if git remote get-url origin >/dev/null 2>&1; then
-                git remote set-url origin "$REPO_HTTPS"
-              else
-                git remote add origin "$REPO_HTTPS"
-              fi
-              echo "==> git fetch"
-              git -c "http.extraHeader=${GIT_HTTP_AUTH}" fetch --prune origin "refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}"
-              echo "==> git checkout"
-              git checkout -f -B "$BRANCH" "origin/$BRANCH"
-            fi
-            echo "==> HEAD=$(git rev-parse --short HEAD)"
+            echo "==> Deploy path ready: $(pwd) HEAD=$(git rev-parse --short HEAD)"
 
             # Optional port secrets → sensible defaults (no GitHub secret required)
             FE_PORT='${{ secrets.PROD_FRONTEND_PORT }}'
