@@ -118,6 +118,7 @@ jobs:
               echo "AMOCRM_PIPELINE_ID="
               echo "AMOCRM_STATUS_ID="
               echo "VITE_API_URL="
+              echo "ENABLE_SWAGGER=true"
             } > .env.production
 
             if [ ! -s .env.production ]; then

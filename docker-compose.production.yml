@@ -30,6 +30,8 @@ services:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
+      Swagger__Enabled: ${ENABLE_SWAGGER:-true}
       ConnectionStrings__DefaultConnection: ${APP_CONNECTION_STRING}
       Jwt__Key: ${JWT_KEY}
       Jwt__Issuer: ${JWT_ISSUER}

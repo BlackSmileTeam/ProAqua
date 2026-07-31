@@ -69,7 +69,8 @@ cd backend/ProAqua.Api
 dotnet run --urls http://0.0.0.0:8080
 ```
 
-Swagger: `http://localhost:8080/swagger`  
+Swagger: `http://localhost:8080/swagger` (локально)  
+Прод: `http://<host>:55511/swagger` (backend) или `http://<host>:55512/swagger` (admin nginx).  
 Вход: телефон + PIN (демо-админ `+79000000001` / `1234`).
 
 ### 3. Админка
@@ -99,7 +100,7 @@ npm run dev
    `docker compose -f docker-compose.production.yml --env-file .env.production up -d --build`.
 
 Порты по умолчанию: backend `55511`, admin `55512`, mysql host `3307`.  
-Перед nginx/HTTPS проксируйте как в bebochka (`/api`, `/uploads` → backend).
+Nginx проксирует `/api`, `/uploads`, `/swagger` → backend. `ENABLE_SWAGGER=true` по умолчанию.
 
 Пример env: `.env.production.example`.
 

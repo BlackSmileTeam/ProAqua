@@ -92,8 +92,16 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(db);
 }
 
-app.UseSwagger();
-app.UseSwaggerUI();
+// Swagger UI enabled in Production by default (set Swagger:Enabled=false / ENABLE_SWAGGER=false to disable).
+if (app.Configuration.GetValue("Swagger:Enabled", true))
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "ПроАква API v1");
+        c.RoutePrefix = "swagger";
+    });
+}
 app.UseCors();
 app.Use(async (ctx, next) =>
 {

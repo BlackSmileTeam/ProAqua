@@ -8,12 +8,9 @@ namespace ProAqua.App.Services;
 
 public class ProAquaApi
 {
-    public static string BaseUrl { get; set; } =
-#if ANDROID
-        "http://10.0.2.2:5080";
-#else
-        "http://localhost:5080";
-#endif
+    // Production: direct backend API (BACKEND_PORT 55511). Paths are /api/... on the API itself.
+    // Via admin nginx (55512) also works for /api; local: "http://10.0.2.2:5080" / "http://localhost:5080".
+    public static string BaseUrl { get; set; } = "http://139.100.225.234:55511";
 
     private readonly HttpClient _http = new()
     {
