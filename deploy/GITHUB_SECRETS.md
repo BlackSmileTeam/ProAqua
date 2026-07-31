@@ -28,7 +28,7 @@
 Server=139.100.225.234;Port=3306;Database=proaqua;User=proaqua;Password=ProAquaApp_ChangeMe_2026!;CharSet=utf8mb4;SslMode=None;AllowPublicKeyRetrieval=True
 ```
 
-Workflow **парсит** из строки `User` / `Password` / `Database` и пишет их в `.env.production` для MySQL-контейнера.  
+Workflow **парсит** из строки `User`/`Uid`/`User ID`, `Password`/`Pwd` и `Database`/`Initial Catalog` (python3 на сервере) и пишет их в `.env.production` для MySQL-контейнера. Пароль может содержать `$`, backticks, `!`, кавычки и прочие shell-символы (но не `;` — это разделитель полей ADO.NET).  
 Для API внутри Docker connection string **переписывается** на сервис compose:
 
 ```text
@@ -57,7 +57,7 @@ Workflow подставляет defaults (секреты не требуются
 
 ## Важно про пароли MySQL и volume
 
-1. **`MYSQL_APP_PASSWORD`** всегда берётся из `Password=` в `DB_CONNECTION_STRING`. Меняете пароль приложения — обновите секрет; он должен совпадать с уже созданным MySQL-пользователем в volume.
+1. **`MYSQL_APP_PASSWORD`** всегда берётся из `Password=` или `Pwd=` в `DB_CONNECTION_STRING`. Меняете пароль приложения — обновите секрет; он должен совпадать с уже созданным MySQL-пользователем в volume.
 2. **`MYSQL_ROOT_PASSWORD`** — стабильный default `RootMysql_ChangeMe_2026!`. MySQL применяет root-пароль **только при первой инициализации** volume. Если volume уже создан с другим root-паролем, смена default в workflow его не поменяет; для root используйте прежний пароль или пересоздайте volume (данные пропадут).
 3. Не генерируйте случайные пароли на каждый деплой — это ломает существующий `mysql_data` volume.
 

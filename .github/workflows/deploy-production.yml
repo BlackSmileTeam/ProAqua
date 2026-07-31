@@ -21,6 +21,9 @@ jobs:
       - name: Deploy over SSH (PROD)
         id: ssh
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
+          JWT_KEY: ${{ secrets.JWT_KEY }}
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
@@ -29,6 +32,7 @@ jobs:
           timeout: 60s
           command_timeout: 30m
           script_stop: true
+          envs: DB_CONNECTION_STRING,JWT_KEY
           script: |
             set -euo pipefail
             trap 'echo "ERROR: deploy failed at line $LINENO (exit $?)" >&2' ERR
@@ -37,59 +41,87 @@ jobs:
             echo "==> Deploy target: $TARGET (${{ secrets.PROD_HOST }})"
             echo "==> whoami=$(whoami) HOME=$HOME pwd=$(pwd)"
 
-            # --- Required secrets: DB_CONNECTION_STRING, JWT_KEY (+ SSH via action inputs) ---
+            # --- Required secrets via appleboy envs (avoids shell-quoting breakage) ---
             echo "==> Resolving DB connection string secret"
-            CONN='${{ secrets.DB_CONNECTION_STRING }}'
+            CONN="${DB_CONNECTION_STRING:-}"
             if [ -z "$CONN" ]; then
               echo "ERROR: set repository secret DB_CONNECTION_STRING (MySQL connection string)"
               exit 1
             fi
             echo "==> Connection string secret present (length=${#CONN})"
 
-            JWT_KEY_VAL='${{ secrets.JWT_KEY }}'
+            JWT_KEY_VAL="${JWT_KEY:-}"
             if [ -z "$JWT_KEY_VAL" ]; then
               echo "ERROR: set repository secret JWT_KEY"
               exit 1
             fi
 
-            # Parse key=value pairs from ADO.NET-style connection string (case-insensitive keys).
-            # Prefer Password/User/Database from DB_CONNECTION_STRING so API + MySQL container stay aligned.
-            conn_get() {
-              local key="$1"
-              # Replace ; with newlines, then take first matching Key=Value (no pipeline subshell).
-              local normalized
-              normalized="$(printf '%s' "$CONN" | tr ';' '\n')"
-              while IFS= read -r part; do
-                part="${part#"${part%%[![:space:]]*}"}"
-                part="${part%"${part##*[![:space:]]}"}"
-                [ -z "$part" ] && continue
-                k="${part%%=*}"
-                v="${part#*=}"
-                k="$(printf '%s' "$k" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
-                if [ "$k" = "$key" ]; then
-                  printf '%s' "$v"
-                  return 0
-                fi
-              done <<EOF
-            $normalized
-            EOF
-              return 0
-            }
-
-            MYSQL_APP_USER="$(conn_get user)"
-            if [ -z "$MYSQL_APP_USER" ]; then MYSQL_APP_USER="$(conn_get uid)"; fi
-            if [ -z "$MYSQL_APP_USER" ]; then MYSQL_APP_USER=proaqua; fi
-
-            MYSQL_APP_PASSWORD="$(conn_get password)"
-            if [ -z "$MYSQL_APP_PASSWORD" ]; then MYSQL_APP_PASSWORD="$(conn_get pwd)"; fi
-            if [ -z "$MYSQL_APP_PASSWORD" ]; then
-              echo "ERROR: DB_CONNECTION_STRING has no Password=… — cannot derive MYSQL_APP_PASSWORD"
+            if ! command -v python3 >/dev/null 2>&1; then
+              echo "ERROR: python3 is required on the deploy host to parse DB_CONNECTION_STRING"
               exit 1
             fi
 
-            MYSQL_DATABASE="$(conn_get database)"
-            if [ -z "$MYSQL_DATABASE" ]; then MYSQL_DATABASE="$(conn_get initialcatalog)"; fi
-            if [ -z "$MYSQL_DATABASE" ]; then MYSQL_DATABASE=proaqua; fi
+            # Robust ADO.NET/.NET MySQL connection-string parser (User/Uid/User ID, Password/Pwd,
+            # Database/Initial Catalog). Values may contain shell metacharacters; do not use sed/awk.
+            echo "==> Parsing DB_CONNECTION_STRING"
+            eval "$(
+              CONN="$CONN" python3 - <<'PY'
+            import os, shlex, sys
+
+            conn = os.environ.get("CONN", "")
+            fields = {}
+            for part in conn.split(";"):
+                part = part.strip()
+                if not part or "=" not in part:
+                    continue
+                key, _, value = part.partition("=")
+                key = "".join(key.lower().split())
+                if key and key not in fields:
+                    fields[key] = value
+
+            user = fields.get("user") or fields.get("uid") or fields.get("userid")
+            password = fields.get("password") or fields.get("pwd")
+            database = fields.get("database") or fields.get("initialcatalog")
+
+            missing = []
+            if not password:
+                missing.append("Password= or Pwd=")
+            if missing:
+                print(
+                    "ERROR: DB_CONNECTION_STRING missing " + ", ".join(missing)
+                    + " (cannot derive MYSQL_APP_PASSWORD)",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            if not user:
+                user = "proaqua"
+            if not database:
+                database = "proaqua"
+
+            app_conn = (
+                "Server=mysql;Port=3306;Database=%s;User=%s;Password=%s;"
+                "CharSet=utf8mb4;SslMode=None;AllowPublicKeyRetrieval=True"
+            ) % (database, user, password)
+
+            found = []
+            if any(k in fields for k in ("user", "uid", "userid")):
+                found.append("user")
+            else:
+                found.append("user(default)")
+            found.append("password")
+            if any(k in fields for k in ("database", "initialcatalog")):
+                found.append("database")
+            else:
+                found.append("database(default)")
+
+            print("echo " + shlex.quote("==> Parsed connection fields: " + ", ".join(found)))
+            print("MYSQL_APP_USER=" + shlex.quote(user))
+            print("MYSQL_APP_PASSWORD=" + shlex.quote(password))
+            print("MYSQL_DATABASE=" + shlex.quote(database))
+            print("APP_CONNECTION_STRING=" + shlex.quote(app_conn))
+            PY
+            )"
 
             # Root password: stable documented default (not a GitHub secret).
             # First-time MySQL volume init uses this; changing it later does NOT update an existing volume.
@@ -99,12 +131,9 @@ jobs:
             echo "==> Derived MySQL: database=$MYSQL_DATABASE user=$MYSQL_APP_USER (password from DB_CONNECTION_STRING)"
             echo "==> MYSQL_ROOT_PASSWORD: using stable workflow default (see deploy/GITHUB_SECRETS.md)"
 
-            # Backend talks to the compose service name "mysql" on internal port 3306.
-            APP_CONNECTION_STRING="Server=mysql;Port=3306;Database=${MYSQL_DATABASE};User=${MYSQL_APP_USER};Password=${MYSQL_APP_PASSWORD};CharSet=utf8mb4;SslMode=None;AllowPublicKeyRetrieval=True"
-
             REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             BRANCH="main"
-            # Default: $HOME/ProAqua (no PROD_DEPLOY_PATH required). Empty secret → fallback.
+            # Default: $HOME/ProAqua (no PROD_DEPLOY_PATH required). Empty secret -> fallback.
             REQUESTED_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
             FALLBACK_PATH="$HOME/ProAqua"
             if [ -z "$REQUESTED_PATH" ]; then
@@ -112,7 +141,11 @@ jobs:
             else
               DEPLOY_PATH="$REQUESTED_PATH"
             fi
-            echo "==> Requested deploy path: '${REQUESTED_PATH:-<empty → $FALLBACK_PATH>}'"
+            if [ -z "$REQUESTED_PATH" ]; then
+              echo "==> Requested deploy path: <empty -> $FALLBACK_PATH>"
+            else
+              echo "==> Requested deploy path: $REQUESTED_PATH"
+            fi
 
             echo "==> Ensuring deploy directory exists: $DEPLOY_PATH"
             if ! mkdir -p "$DEPLOY_PATH" 2>/tmp/proaqua_mkdir.err; then
