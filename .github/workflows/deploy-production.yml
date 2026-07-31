@@ -24,6 +24,8 @@ jobs:
         env:
           DB_CONNECTION_STRING: ${{ secrets.DB_CONNECTION_STRING }}
           JWT_KEY: ${{ secrets.JWT_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
@@ -32,7 +34,7 @@ jobs:
           timeout: 60s
           command_timeout: 30m
           script_stop: true
-          envs: DB_CONNECTION_STRING,JWT_KEY
+          envs: DB_CONNECTION_STRING,JWT_KEY,GITHUB_TOKEN,GITHUB_REPOSITORY
           script: |
             set -euo pipefail
             trap 'echo "ERROR: deploy failed at line $LINENO (exit $?)" >&2' ERR
@@ -77,7 +79,6 @@ jobs:
             echo "==> Derived MySQL: database=$MYSQL_DATABASE user=$MYSQL_APP_USER (password from DB_CONNECTION_STRING)"
             echo "==> MYSQL_ROOT_PASSWORD: using stable workflow default (see deploy/GITHUB_SECRETS.md)"
 
-            REPO_URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
             BRANCH="main"
             # Default: $HOME/ProAqua (no PROD_DEPLOY_PATH required). Empty secret -> fallback.
             REQUESTED_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
@@ -110,15 +111,48 @@ jobs:
             echo "==> Using deploy path: $(pwd)"
 
             echo "==> Syncing git ($BRANCH)"
-            if [ ! -d .git ]; then
-              git init
-              git remote add origin "$REPO_URL"
-            else
-              git remote set-url origin "$REPO_URL"
+            if [ -z "${GITHUB_TOKEN:-}" ]; then
+              echo "ERROR: GITHUB_TOKEN is empty (pass via appleboy envs from github.token)"
+              exit 1
+            fi
+            if [ -z "${GITHUB_REPOSITORY:-}" ]; then
+              echo "ERROR: GITHUB_REPOSITORY is empty"
+              exit 1
+            fi
+            if ! command -v git >/dev/null 2>&1; then
+              echo "ERROR: git is not installed for $(whoami)"
+              exit 1
             fi
 
-            git fetch --prune origin "refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
-            git checkout -f -B "$BRANCH" "origin/$BRANCH"
+            # HTTPS remote without token in URL (token must not land in .git/config).
+            REPO_HTTPS="https://github.com/${GITHUB_REPOSITORY}.git"
+            GIT_HTTP_AUTH="AUTHORIZATION: bearer ${GITHUB_TOKEN}"
+
+            if [ ! -d .git ]; then
+              echo "==> git clone (directory is not a git repo)"
+              CLONE_TMP=$(mktemp -d /tmp/proaqua-clone.XXXXXX)
+              git -c "http.extraHeader=${GIT_HTTP_AUTH}" clone --branch "$BRANCH" --single-branch "$REPO_HTTPS" "$CLONE_TMP/repo"
+              echo "==> copying clone into deploy path"
+              if command -v rsync >/dev/null 2>&1; then
+                rsync -a "$CLONE_TMP/repo"/ "$DEPLOY_PATH"/
+              else
+                cp -a "$CLONE_TMP/repo"/. "$DEPLOY_PATH"/
+              fi
+              rm -rf "$CLONE_TMP"
+              echo "==> git remote set-url (HTTPS, no token)"
+              git remote set-url origin "$REPO_HTTPS"
+            else
+              echo "==> git remote set-url (HTTPS, no token)"
+              if git remote get-url origin >/dev/null 2>&1; then
+                git remote set-url origin "$REPO_HTTPS"
+              else
+                git remote add origin "$REPO_HTTPS"
+              fi
+              echo "==> git fetch"
+              git -c "http.extraHeader=${GIT_HTTP_AUTH}" fetch --prune origin "refs/heads/${BRANCH}:refs/remotes/origin/${BRANCH}"
+              echo "==> git checkout"
+              git checkout -f -B "$BRANCH" "origin/$BRANCH"
+            fi
             echo "==> HEAD=$(git rev-parse --short HEAD)"
 
             # Optional port secrets → sensible defaults (no GitHub secret required)
