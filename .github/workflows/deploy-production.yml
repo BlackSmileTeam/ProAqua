@@ -63,65 +63,11 @@ jobs:
 
             # Robust ADO.NET/.NET MySQL connection-string parser (User/Uid/User ID, Password/Pwd,
             # Database/Initial Catalog). Values may contain shell metacharacters; do not use sed/awk.
+            # IMPORTANT: no bash/Python heredocs - appleboy/drone-ssh injects
+            # DRONE_SSH_PREV_COMMAND_EXIT_CODE=... between script lines and breaks heredocs.
+            # Base64 payload is one logical pipeline so Python never sees those bash snippets.
             echo "==> Parsing DB_CONNECTION_STRING"
-            eval "$(
-              CONN="$CONN" python3 - <<'PY'
-            import os, shlex, sys
-
-            conn = os.environ.get("CONN", "")
-            fields = {}
-            for part in conn.split(";"):
-                part = part.strip()
-                if not part or "=" not in part:
-                    continue
-                key, _, value = part.partition("=")
-                key = "".join(key.lower().split())
-                if key and key not in fields:
-                    fields[key] = value
-
-            user = fields.get("user") or fields.get("uid") or fields.get("userid")
-            password = fields.get("password") or fields.get("pwd")
-            database = fields.get("database") or fields.get("initialcatalog")
-
-            missing = []
-            if not password:
-                missing.append("Password= or Pwd=")
-            if missing:
-                print(
-                    "ERROR: DB_CONNECTION_STRING missing " + ", ".join(missing)
-                    + " (cannot derive MYSQL_APP_PASSWORD)",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            if not user:
-                user = "proaqua"
-            if not database:
-                database = "proaqua"
-
-            app_conn = (
-                "Server=mysql;Port=3306;Database=%s;User=%s;Password=%s;"
-                "CharSet=utf8mb4;SslMode=None;AllowPublicKeyRetrieval=True"
-            ) % (database, user, password)
-
-            found = []
-            if any(k in fields for k in ("user", "uid", "userid")):
-                found.append("user")
-            else:
-                found.append("user(default)")
-            found.append("password")
-            if any(k in fields for k in ("database", "initialcatalog")):
-                found.append("database")
-            else:
-                found.append("database(default)")
-
-            print("echo " + shlex.quote("==> Parsed connection fields: " + ", ".join(found)))
-            print("MYSQL_APP_USER=" + shlex.quote(user))
-            print("MYSQL_APP_PASSWORD=" + shlex.quote(password))
-            print("MYSQL_DATABASE=" + shlex.quote(database))
-            print("APP_CONNECTION_STRING=" + shlex.quote(app_conn))
-            PY
-            )"
+            eval "$(echo 'aW1wb3J0IG9zLCBzaGxleCwgc3lzCmNvbm4gPSBvcy5lbnZpcm9uLmdldCgnQ09OTicsICcnKQpmaWVsZHMgPSB7fQpmb3IgcGFydCBpbiBjb25uLnNwbGl0KCc7Jyk6CiAgICBwYXJ0ID0gcGFydC5zdHJpcCgpCiAgICBpZiBub3QgcGFydCBvciAnPScgbm90IGluIHBhcnQ6CiAgICAgICAgY29udGludWUKICAgIGtleSwgXywgdmFsdWUgPSBwYXJ0LnBhcnRpdGlvbignPScpCiAgICBrZXkgPSAnJy5qb2luKGtleS5sb3dlcigpLnNwbGl0KCkpCiAgICBpZiBrZXkgYW5kIGtleSBub3QgaW4gZmllbGRzOgogICAgICAgIGZpZWxkc1trZXldID0gdmFsdWUKdXNlciA9IGZpZWxkcy5nZXQoJ3VzZXInKSBvciBmaWVsZHMuZ2V0KCd1aWQnKSBvciBmaWVsZHMuZ2V0KCd1c2VyaWQnKQpwYXNzd29yZCA9IGZpZWxkcy5nZXQoJ3Bhc3N3b3JkJykgb3IgZmllbGRzLmdldCgncHdkJykKZGF0YWJhc2UgPSBmaWVsZHMuZ2V0KCdkYXRhYmFzZScpIG9yIGZpZWxkcy5nZXQoJ2luaXRpYWxjYXRhbG9nJykKbWlzc2luZyA9IFtdCmlmIG5vdCBwYXNzd29yZDoKICAgIG1pc3NpbmcuYXBwZW5kKCdQYXNzd29yZD0gb3IgUHdkPScpCmlmIG1pc3Npbmc6CiAgICBwcmludCgnRVJST1I6IERCX0NPTk5FQ1RJT05fU1RSSU5HIG1pc3NpbmcgJyArICcsICcuam9pbihtaXNzaW5nKSArICcgKGNhbm5vdCBkZXJpdmUgTVlTUUxfQVBQX1BBU1NXT1JEKScsIGZpbGU9c3lzLnN0ZGVycikKICAgIHN5cy5leGl0KDEpCmlmIG5vdCB1c2VyOgogICAgdXNlciA9ICdwcm9hcXVhJwppZiBub3QgZGF0YWJhc2U6CiAgICBkYXRhYmFzZSA9ICdwcm9hcXVhJwphcHBfY29ubiA9ICgnU2VydmVyPW15c3FsO1BvcnQ9MzMwNjtEYXRhYmFzZT0lcztVc2VyPSVzO1Bhc3N3b3JkPSVzO0NoYXJTZXQ9dXRmOG1iNDtTc2xNb2RlPU5vbmU7QWxsb3dQdWJsaWNLZXlSZXRyaWV2YWw9VHJ1ZScpICUgKGRhdGFiYXNlLCB1c2VyLCBwYXNzd29yZCkKZm91bmQgPSBbXQppZiBhbnkoayBpbiBmaWVsZHMgZm9yIGsgaW4gKCd1c2VyJywgJ3VpZCcsICd1c2VyaWQnKSk6CiAgICBmb3VuZC5hcHBlbmQoJ3VzZXInKQplbHNlOgogICAgZm91bmQuYXBwZW5kKCd1c2VyKGRlZmF1bHQpJykKZm91bmQuYXBwZW5kKCdwYXNzd29yZCcpCmlmIGFueShrIGluIGZpZWxkcyBmb3IgayBpbiAoJ2RhdGFiYXNlJywgJ2luaXRpYWxjYXRhbG9nJykpOgogICAgZm91bmQuYXBwZW5kKCdkYXRhYmFzZScpCmVsc2U6CiAgICBmb3VuZC5hcHBlbmQoJ2RhdGFiYXNlKGRlZmF1bHQpJykKcHJpbnQoJ2VjaG8gJyArIHNobGV4LnF1b3RlKCc9PT4gUGFyc2VkIGNvbm5lY3Rpb24gZmllbGRzOiAnICsgJywgJy5qb2luKGZvdW5kKSkpCnByaW50KCdNWVNRTF9BUFBfVVNFUj0nICsgc2hsZXgucXVvdGUodXNlcikpCnByaW50KCdNWVNRTF9BUFBfUEFTU1dPUkQ9JyArIHNobGV4LnF1b3RlKHBhc3N3b3JkKSkKcHJpbnQoJ01ZU1FMX0RBVEFCQVNFPScgKyBzaGxleC5xdW90ZShkYXRhYmFzZSkpCnByaW50KCdBUFBfQ09OTkVDVElPTl9TVFJJTkc9JyArIHNobGV4LnF1b3RlKGFwcF9jb25uKSkK' | base64 -d | CONN="$CONN" python3 -)"
 
             # Root password: stable documented default (not a GitHub secret).
             # First-time MySQL volume init uses this; changing it later does NOT update an existing volume.
