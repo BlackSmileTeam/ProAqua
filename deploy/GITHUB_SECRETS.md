@@ -22,7 +22,7 @@
 | `DB_CONNECTION_STRING` | MySQL connection string приложения | см. ниже |
 | `JWT_KEY` | ключ JWT (≥32 символов) | `ProAquaJwt_ChangeMe_AtLeast_32_Chars_Prod!` |
 
-Пример `DB_CONNECTION_STRING`:
+Пример `DB_CONNECTION_STRING` (host MySQL на стандартном порту):
 
 ```text
 Server=139.100.225.234;Port=3306;Database=proaqua;User=proaqua;Password=ProAquaApp_ChangeMe_2026!;CharSet=utf8mb4;SslMode=None;AllowPublicKeyRetrieval=True
@@ -30,9 +30,29 @@ Server=139.100.225.234;Port=3306;Database=proaqua;User=proaqua;Password=ProAquaA
 
 Workflow пишет `DB_CONNECTION_STRING` **буквально** в `.env.production` как `APP_CONNECTION_STRING` → `ConnectionStrings__DefaultConnection` у backend. **Server не переписывается** на `mysql` — если в секрете `Server=139.100.225.234`, API ходит туда же. `Database=` / `User=` / `Password=` тоже берутся как в секрете (например `aquapro` vs `proaqua` — не форсируется).
 
-Секрет должен быть достижим **из контейнера** `proaqua-backend` (например `Server=139.100.225.234;Port=3306` или `3307`). Если MySQL на хосте слушает только `127.0.0.1`, контейнер до публичного IP не достучится — нужен bind на `0.0.0.0` (и firewall). Не подставляйте `host.docker.internal`: используйте IP/порт из секрета как есть.
+Значения с паролями / connection string в `.env.production` пишутся в **одинарных кавычках**, иначе `docker compose --env-file` интерполирует `$...` внутри пароля и строка обрезается (симптом: `database ''` в логах MySQL).
 
-Дополнительно workflow **парсит** из строки `User`/`Uid`/`User ID`, `Password`/`Pwd` и `Database`/`Initial Catalog` (python3 на сервере) только для опционального compose-сервиса `mysql` (`MYSQL_*`). Пароль может содержать `$`, backticks, `!`, кавычки и прочие shell-символы (но не `;` — это разделитель полей ADO.NET).
+### Port: `3306` vs `3307`
+
+| Когда | `Port=` в секрете |
+|-------|-------------------|
+| MySQL установлен на хосте (типичный прод) | **`3306`** — нативный mysqld |
+| Optional compose `mysql` (`--profile local-mysql`) | **`3307`** — host publish `${MYSQL_PORT}:3306`, default `MYSQL_PORT=3307` |
+
+Не меняйте секрет «на всякий случай» на `3307`, если API ходит в host MySQL на `3306`. `3307` нужен только если цель — контейнерный mysql из compose.
+
+### Docker → host (hairpin)
+
+В `docker-compose.production.yml` у `backend` задано:
+
+```yaml
+extra_hosts:
+  - "139.100.225.234:host-gateway"
+```
+
+Секрет можно оставить с `Server=139.100.225.234`: из контейнера этот IP резолвится в Docker host (не в публичный hairpin). MySQL на хосте должен слушать интерфейс, доступный с docker bridge (часто `0.0.0.0` или адрес docker0; чистый `127.0.0.1`-only bind по-прежнему недоступен без `network_mode: host`). Не подставляйте `host.docker.internal` в секрет.
+
+Дополнительно workflow **парсит** из строки `User`/`Uid`/`User ID`, `Password`/`Pwd` и `Database`/`Initial Catalog` (python3 на сервере) только для опционального compose-сервиса `mysql` (`MYSQL_*`). Пароль может содержать `$`, backticks, `!` и прочие shell-символы (но не `;` — разделитель полей ADO.NET; избегайте `'` в пароле из‑за single-quote в `.env`).
 
 Compose-сервис `mysql` в профиле `local-mysql` и **не** стартует при обычном деплое; backend не `depends_on` mysql.
 
@@ -66,7 +86,7 @@ Workflow подставляет defaults (секреты не требуются
 | Поле | Значение |
 |------|----------|
 | Host | `139.100.225.234` (или SSH-туннель → `127.0.0.1`) |
-| Port | `3306` на хосте MySQL **или** `3307` если смотрите в optional Docker mysql (`--profile local-mysql`) |
+| Port | `3306` = host mysqld; `3307` = optional Docker mysql host mapping (`MYSQL_PORT`) |
 | User / Password / Database | как в `DB_CONNECTION_STRING` |
 
 ## SQL на сервере (по SSH)

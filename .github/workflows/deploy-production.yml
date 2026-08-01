@@ -100,16 +100,19 @@ jobs:
 
             echo "==> Writing .env.production"
             umask 077
+            # Single-quote secret-bearing values so docker compose --env-file does not
+            # interpolate $VAR / ${VAR} inside passwords (which truncates Database= etc.).
+            # Also protects ! and other shell-sensitive chars. Values must not contain '.
             {
               echo "FRONTEND_PORT=$FE_PORT"
               echo "BACKEND_PORT=$BE_PORT"
               echo "MYSQL_PORT=$MYSQL_PORT"
-              echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD"
-              echo "MYSQL_DATABASE=$MYSQL_DATABASE"
-              echo "MYSQL_APP_USER=$MYSQL_APP_USER"
-              echo "MYSQL_APP_PASSWORD=$MYSQL_APP_PASSWORD"
-              echo "APP_CONNECTION_STRING=$APP_CONNECTION_STRING"
-              echo "JWT_KEY=$JWT_KEY_VAL"
+              echo "MYSQL_ROOT_PASSWORD='$MYSQL_ROOT_PASSWORD'"
+              echo "MYSQL_DATABASE='$MYSQL_DATABASE'"
+              echo "MYSQL_APP_USER='$MYSQL_APP_USER'"
+              echo "MYSQL_APP_PASSWORD='$MYSQL_APP_PASSWORD'"
+              echo "APP_CONNECTION_STRING='$APP_CONNECTION_STRING'"
+              echo "JWT_KEY='$JWT_KEY_VAL'"
               echo "JWT_ISSUER=ProAquaApi"
               echo "JWT_AUDIENCE=ProAquaClient"
               echo "PUSH_PROVIDER=Dev"
