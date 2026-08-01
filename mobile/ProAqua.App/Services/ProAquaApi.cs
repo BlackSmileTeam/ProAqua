@@ -65,11 +65,11 @@ public class ProAquaApi
         }
         catch (HttpRequestException)
         {
-            throw new Exception($"Нет связи с сервером ({BaseUrl}). Запустите ПроАква API в VS.");
+            throw new Exception("Нет связи");
         }
         catch (TaskCanceledException)
         {
-            throw new Exception($"Таймаут связи с сервером ({BaseUrl}).");
+            throw new Exception("Нет связи");
         }
     }
 
