@@ -1,7 +1,11 @@
+using System.Net.Http;
+using ProAqua.App.Services;
+
 namespace ProAqua.App.Pages;
 
 public partial class StartupPage : ContentPage
 {
+    private const int SessionCheckTimeoutSeconds = 12;
     private bool _initialized;
 
     public StartupPage()
@@ -26,7 +30,24 @@ public partial class StartupPage : ContentPage
                 return;
             }
 
-            var profile = await App.Api.GetProfileAsync();
+            Profile? profile;
+            try
+            {
+                profile = await App.Api.GetProfileAsync()
+                    .WaitAsync(TimeSpan.FromSeconds(SessionCheckTimeoutSeconds));
+            }
+            catch (TimeoutException)
+            {
+                // Keep token — API may be temporarily down; show login with connection hint.
+                window.Page = new LoginPage(connectionHint: "Нет связи");
+                return;
+            }
+            catch (Exception ex) when (IsConnectivityFailure(ex))
+            {
+                window.Page = new LoginPage(connectionHint: "Нет связи");
+                return;
+            }
+
             if (profile is null)
             {
                 App.Api.SetToken(null);
@@ -42,10 +63,21 @@ public partial class StartupPage : ContentPage
 
             window.Page = new AppShell();
         }
-        catch
+        catch (Exception ex)
         {
-            App.Api.SetToken(null);
-            window.Page = new LoginPage();
+            // Never leave a blank/stuck splash: always land on login.
+            System.Diagnostics.Debug.WriteLine($"[Startup] {ex}");
+            var hint = IsConnectivityFailure(ex) ? "Нет связи" : null;
+            if (hint is null)
+                App.Api.SetToken(null);
+            window.Page = new LoginPage(connectionHint: hint);
         }
+    }
+
+    private static bool IsConnectivityFailure(Exception ex)
+    {
+        if (ex is HttpRequestException or TaskCanceledException or TimeoutException)
+            return true;
+        return ex.Message?.Contains("Нет связи", StringComparison.Ordinal) == true;
     }
 }

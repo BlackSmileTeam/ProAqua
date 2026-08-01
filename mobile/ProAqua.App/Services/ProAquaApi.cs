@@ -14,7 +14,8 @@ public class ProAquaApi
 
     private readonly HttpClient _http = new()
     {
-        Timeout = TimeSpan.FromSeconds(20)
+        // Keep short so splash/home do not hang when the API is down.
+        Timeout = TimeSpan.FromSeconds(12)
     };
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -191,6 +192,16 @@ public class ProAquaApi
         try
         {
             res = await _http.GetAsync(url);
+        }
+        catch (HttpRequestException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] GET failed {url}: {ex.Message}");
+            throw new Exception("Нет связи");
+        }
+        catch (TaskCanceledException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] GET timeout/cancel {url}: {ex.Message}");
+            throw new Exception("Нет связи");
         }
         catch (Exception ex)
         {

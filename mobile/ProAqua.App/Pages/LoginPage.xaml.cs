@@ -4,10 +4,12 @@ namespace ProAqua.App.Pages;
 
 public partial class LoginPage : ContentPage
 {
-    public LoginPage()
+    public LoginPage(string? connectionHint = null)
     {
         InitializeComponent();
         PhoneEntry.Text = "+79";
+        if (!string.IsNullOrWhiteSpace(connectionHint))
+            ErrorLabel.Text = connectionHint;
     }
 
     private async void OnLoginClicked(object? sender, EventArgs e)
@@ -33,7 +35,9 @@ public partial class LoginPage : ContentPage
         catch (Exception ex)
         {
             await Ui.ForceClearBusyAsync();
-            await Ui.ErrorAsync(ex.Message);
+            var msg = string.IsNullOrWhiteSpace(ex.Message) ? "Нет связи" : ex.Message;
+            ErrorLabel.Text = msg;
+            await Ui.ErrorAsync(msg);
         }
     }
 }

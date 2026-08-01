@@ -10,6 +10,15 @@ public partial class App : Application
     {
         InitializeComponent();
         Api.RestoreSession();
+
+        // Avoid silent black screen on unhandled UI/async errors.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            System.Diagnostics.Debug.WriteLine($"[App] Unhandled: {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            System.Diagnostics.Debug.WriteLine($"[App] UnobservedTask: {e.Exception}");
+            e.SetObserved();
+        };
     }
 
     protected override Window CreateWindow(IActivationState? activationState)

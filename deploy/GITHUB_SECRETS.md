@@ -28,9 +28,15 @@
 Server=139.100.225.234;Port=3306;Database=proaqua;User=proaqua;Password=ProAquaApp_ChangeMe_2026!;CharSet=utf8mb4;SslMode=None;AllowPublicKeyRetrieval=True
 ```
 
-Workflow пишет `DB_CONNECTION_STRING` **буквально** в `.env.production` как `APP_CONNECTION_STRING` → `ConnectionStrings__DefaultConnection` у backend. **Server не переписывается** на `mysql` — если в секрете `Server=139.100.225.234`, API ходит туда же. `Database=` / `User=` / `Password=` тоже берутся как в секрете (например `aquapro` vs `proaqua` — не форсируется).
+Секрет можно оставить с публичным `Server=139.100.225.234` (или `Server=<PROD_HOST>`). При записи `.env.production` workflow **переписывает только `APP_CONNECTION_STRING`**: если `Server=` совпадает с `PROD_HOST` (или с `139.100.225.234`), подставляется `Server=127.0.0.1`. Port / Database / User / Password не трогаются. В логе деплоя:
 
-Значения с паролями / connection string в `.env.production` пишутся в **одинарных кавычках**, иначе `docker compose --env-file` интерполирует `$...` внутри пароля и строка обрезается (симптом: `database ''` в логах MySQL).
+```text
+==> APP_CONNECTION_STRING: Server remapped to 127.0.0.1 (same-host; public IP hairpin)
+```
+
+**Почему:** с самого сервера (и контейнеров на нём) соединение на **свой** публичный IP часто зависает (NAT hairpin). `nc 127.0.0.1 3306` работает, Workbench через SSH-туннель на localhost — тоже. Альтернатива без remap: сразу поставить в секрет `Server=127.0.0.1`.
+
+`Database=` / `User=` / `Password=` берутся как в секрете (например `aquapro` vs `proaqua` — не форсируется). Значения с паролями / connection string в `.env.production` пишутся в **одинарных кавычках**, иначе `docker compose --env-file` интерполирует `$...` внутри пароля и строка обрезается (симптом: `database ''` в логах MySQL).
 
 ### Port: `3306` vs `3307`
 
@@ -41,17 +47,12 @@ Workflow пишет `DB_CONNECTION_STRING` **буквально** в `.env.produ
 
 Не меняйте секрет «на всякий случай» на `3307`, если API ходит в host MySQL на `3306`. `3307` нужен только если цель — контейнерный mysql из compose.
 
-### Docker → host (hairpin)
+### Backend network + admin proxy
 
-В `docker-compose.production.yml` у `backend` задано:
+В `docker-compose.production.yml`:
 
-```yaml
-extra_hosts:
-  - "139.100.225.234:host-gateway"
-  - "host.docker.internal:host-gateway"
-```
-
-Секрет можно оставить с `Server=139.100.225.234`: из контейнера этот IP резолвится в Docker host (не в публичный hairpin). MySQL на хосте должен слушать интерфейс, доступный с docker bridge / host-gateway (часто `0.0.0.0`; чистый `127.0.0.1`-only bind обычно недоступен с bridge — проверьте `bind-address`). Не подставляйте `host.docker.internal` в секрет — alias уже есть в compose для отладки.
+- `backend` использует `network_mode: host` и слушает `ASPNETCORE_URLS=http://0.0.0.0:${BACKEND_PORT}` (по умолчанию `55511`). С host network + `Server=127.0.0.1` MySQL на хосте доступен напрямую.
+- `admin` (nginx) остаётся в bridge-сети и проксирует API на `host.docker.internal:55511` (`extra_hosts: host-gateway`, см. `admin/nginx.compose.conf`).
 
 Дополнительно workflow **парсит** из строки `User`/`Uid`/`User ID`, `Password`/`Pwd` и `Database`/`Initial Catalog` (python3 на сервере) только для опционального compose-сервиса `mysql` (`MYSQL_*`). Пароль может содержать `$`, backticks, `!` и прочие shell-символы (но не `;` — разделитель полей ADO.NET; избегайте `'` в пароле из‑за single-quote в `.env`).
 
@@ -77,7 +78,7 @@ Workflow подставляет defaults (секреты не требуются
 
 ## Важно про пароли MySQL и volume
 
-1. **API** использует пароль и БД из `DB_CONNECTION_STRING` как есть — они должны совпадать с реальным MySQL на `Server=` из секрета.
+1. **API** использует пароль и БД из `DB_CONNECTION_STRING` (после возможного remap `Server→127.0.0.1`) — они должны совпадать с реальным MySQL.
 2. **`MYSQL_APP_PASSWORD`** (для optional compose mysql) тоже берётся из `Password=` / `Pwd=` в секрете.
 3. **`MYSQL_ROOT_PASSWORD`** — стабильный default `RootMysql_ChangeMe_2026!`. MySQL применяет root-пароль **только при первой инициализации** volume. Если volume уже создан с другим root-паролем, смена default в workflow его не поменяет.
 4. Не генерируйте случайные пароли на каждый деплой — это ломает существующий `mysql_data` volume (если пользуетесь `local-mysql`).

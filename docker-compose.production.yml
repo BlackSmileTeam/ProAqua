@@ -29,12 +29,12 @@ services:
       dockerfile: Dockerfile
     container_name: proaqua-backend
     restart: unless-stopped
-    # Host network: container shares the host stack so it can reach host MySQL on
-    # 139.100.225.234:3306 / 127.0.0.1:3306 (Docker bridge→host was blocked despite extra_hosts).
+    # Host network: shares the host stack. Deploy remaps APP Server=PROD_HOST → 127.0.0.1
+    # (NAT hairpin: connecting to the host's own public IP from itself times out).
     # ports: is incompatible with network_mode: host — bind via ASPNETCORE_URLS instead.
     network_mode: host
-    # No depends_on mysql: production API uses APP_CONNECTION_STRING from DB_CONNECTION_STRING
-    # (e.g. Server=139.100.225.234), not the optional compose mysql service.
+    # No depends_on mysql: production API uses APP_CONNECTION_STRING (typically Server=127.0.0.1),
+    # not the optional compose mysql service.
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://0.0.0.0:${BACKEND_PORT:-55511}
