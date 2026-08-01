@@ -1,5 +1,9 @@
 services:
+  # Optional local MySQL — not used when API points at external/host MySQL via DB_CONNECTION_STRING.
+  # Start only if needed: docker compose --profile local-mysql -f docker-compose.production.yml up -d
   mysql:
+    profiles:
+      - local-mysql
     image: mysql:8.0
     container_name: proaqua-mysql
     restart: unless-stopped
@@ -25,9 +29,8 @@ services:
       dockerfile: Dockerfile
     container_name: proaqua-backend
     restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
+    # No depends_on mysql: production API uses APP_CONNECTION_STRING from DB_CONNECTION_STRING
+    # (e.g. Server=139.100.225.234), not the optional compose mysql service.
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}
