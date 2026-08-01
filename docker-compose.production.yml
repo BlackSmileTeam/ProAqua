@@ -32,9 +32,11 @@ services:
     # No depends_on mysql: production API uses APP_CONNECTION_STRING from DB_CONNECTION_STRING
     # (e.g. Server=139.100.225.234), not the optional compose mysql service.
     # Hairpin fix: secret keeps Server=139.100.225.234; map that IP to the Docker host
-    # so the container reaches host MySQL instead of timing out on public-IP hairpin.
+    # so the container reaches host MySQL (bind must allow docker bridge / 0.0.0.0).
+    # Port= in DB_CONNECTION_STRING must match the host listener (often 3306, not 3307).
     extra_hosts:
       - "139.100.225.234:host-gateway"
+      - "host.docker.internal:host-gateway"
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ENABLE_SWAGGER: ${ENABLE_SWAGGER:-true}

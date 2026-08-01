@@ -100,19 +100,26 @@ jobs:
 
             echo "==> Writing .env.production"
             umask 077
+            set +o histexpand 2>/dev/null || set +H 2>/dev/null || true
             # Single-quote secret-bearing values so docker compose --env-file does not
-            # interpolate $VAR / ${VAR} inside passwords (which truncates Database= etc.).
-            # Also protects ! and other shell-sensitive chars. Values must not contain '.
+            # strip $VAR inside passwords. Also double $ -> $$ so ${APP_CONNECTION_STRING}
+            # YAML interpolation leaves a literal $ in the container (Compose uses $$).
+            # Values must not contain single quotes.
+            esc_dollar() { printf '%s' "$1" | sed 's/\$/$$/g'; }
+            MYSQL_ROOT_PASSWORD_ESC="$(esc_dollar "$MYSQL_ROOT_PASSWORD")"
+            MYSQL_APP_PASSWORD_ESC="$(esc_dollar "$MYSQL_APP_PASSWORD")"
+            APP_CONNECTION_STRING_ESC="$(esc_dollar "$APP_CONNECTION_STRING")"
+            JWT_KEY_ESC="$(esc_dollar "$JWT_KEY_VAL")"
             {
               echo "FRONTEND_PORT=$FE_PORT"
               echo "BACKEND_PORT=$BE_PORT"
               echo "MYSQL_PORT=$MYSQL_PORT"
-              echo "MYSQL_ROOT_PASSWORD='$MYSQL_ROOT_PASSWORD'"
+              echo "MYSQL_ROOT_PASSWORD='$MYSQL_ROOT_PASSWORD_ESC'"
               echo "MYSQL_DATABASE='$MYSQL_DATABASE'"
               echo "MYSQL_APP_USER='$MYSQL_APP_USER'"
-              echo "MYSQL_APP_PASSWORD='$MYSQL_APP_PASSWORD'"
-              echo "APP_CONNECTION_STRING='$APP_CONNECTION_STRING'"
-              echo "JWT_KEY='$JWT_KEY_VAL'"
+              echo "MYSQL_APP_PASSWORD='$MYSQL_APP_PASSWORD_ESC'"
+              echo "APP_CONNECTION_STRING='$APP_CONNECTION_STRING_ESC'"
+              echo "JWT_KEY='$JWT_KEY_ESC'"
               echo "JWT_ISSUER=ProAquaApi"
               echo "JWT_AUDIENCE=ProAquaClient"
               echo "PUSH_PROVIDER=Dev"
@@ -146,7 +153,11 @@ jobs:
               echo "ERROR: APP_CONNECTION_STRING is empty"
               exit 1
             fi
-            echo "==> .env.production written ($(wc -l < .env.production) lines)"
+            if ! grep -qE 'Database=|Initial Catalog=' .env.production; then
+              echo "ERROR: APP_CONNECTION_STRING missing Database= (quoting/truncation?)"
+              exit 1
+            fi
+            echo "==> .env.production written ($(wc -l < .env.production) lines; Database= present)"
 
             echo "==> Preparing uploads directory"
             mkdir -p "$DEPLOY_PATH/data/wwwroot/uploads"

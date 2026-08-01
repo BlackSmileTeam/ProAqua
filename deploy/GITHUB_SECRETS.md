@@ -48,9 +48,10 @@ Workflow пишет `DB_CONNECTION_STRING` **буквально** в `.env.produ
 ```yaml
 extra_hosts:
   - "139.100.225.234:host-gateway"
+  - "host.docker.internal:host-gateway"
 ```
 
-Секрет можно оставить с `Server=139.100.225.234`: из контейнера этот IP резолвится в Docker host (не в публичный hairpin). MySQL на хосте должен слушать интерфейс, доступный с docker bridge (часто `0.0.0.0` или адрес docker0; чистый `127.0.0.1`-only bind по-прежнему недоступен без `network_mode: host`). Не подставляйте `host.docker.internal` в секрет.
+Секрет можно оставить с `Server=139.100.225.234`: из контейнера этот IP резолвится в Docker host (не в публичный hairpin). MySQL на хосте должен слушать интерфейс, доступный с docker bridge / host-gateway (часто `0.0.0.0`; чистый `127.0.0.1`-only bind обычно недоступен с bridge — проверьте `bind-address`). Не подставляйте `host.docker.internal` в секрет — alias уже есть в compose для отладки.
 
 Дополнительно workflow **парсит** из строки `User`/`Uid`/`User ID`, `Password`/`Pwd` и `Database`/`Initial Catalog` (python3 на сервере) только для опционального compose-сервиса `mysql` (`MYSQL_*`). Пароль может содержать `$`, backticks, `!` и прочие shell-символы (но не `;` — разделитель полей ADO.NET; избегайте `'` в пароле из‑за single-quote в `.env`).
 
