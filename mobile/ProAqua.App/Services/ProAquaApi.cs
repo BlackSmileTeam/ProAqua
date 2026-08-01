@@ -8,20 +8,36 @@ namespace ProAqua.App.Services;
 
 public class ProAquaApi
 {
-    // Production: direct backend API (BACKEND_PORT 55511). Paths are /api/... on the API itself.
-    // Via admin nginx (55512) also works for /api; local: "http://10.0.2.2:5080" / "http://localhost:5080".
-    public static string BaseUrl { get; set; } = "http://139.100.225.234:55511";
+    // Production: admin nginx front door (FRONTEND_PORT 55512). Paths stay /api/... —
+    // nginx location /api/ proxies to backend /api/ (no strip → no /api/api/...).
+    // Direct backend 55511 is often firewalled from WAN (TCP OK, empty HTTP reply).
+    // Local: "http://10.0.2.2:5080" / "http://localhost:5080".
+    public static string BaseUrl { get; set; } = "http://139.100.225.234:55512";
 
-    private readonly HttpClient _http = new()
-    {
-        // Keep short so splash/home do not hang when the API is down.
-        Timeout = TimeSpan.FromSeconds(12)
-    };
+    private readonly HttpClient _http;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         Converters = { new JsonStringEnumConverter() }
     };
+
+    public ProAquaApi()
+    {
+        // Short-lived pooled connections avoid OkHttp "unexpected end of stream"
+        // when a keep-alive socket is closed by a middlebox/firewall.
+        var handler = new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromSeconds(30),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(15),
+            ConnectTimeout = TimeSpan.FromSeconds(10),
+            AllowAutoRedirect = true
+        };
+        _http = new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromSeconds(20)
+        };
+        _http.DefaultRequestHeaders.ConnectionClose = true;
+    }
 
     public string? Token { get; private set; }
 
@@ -55,7 +71,8 @@ public class ProAquaApi
         {
             var normalizedPhone = NormalizePhone(phone);
             var normalizedPassword = (password ?? string.Empty).Trim();
-            var res = await _http.PostAsJsonAsync($"{BaseUrl}/api/auth/login", new { phone = normalizedPhone, password = normalizedPassword });
+            var res = await SendAsync(() =>
+                _http.PostAsJsonAsync($"{BaseUrl}/api/auth/login", new { phone = normalizedPhone, password = normalizedPassword }));
             var body = await res.Content.ReadAsStringAsync();
             if (!res.IsSuccessStatusCode)
                 throw new Exception(TryMessage(body) ?? $"Ошибка входа ({(int)res.StatusCode})");
@@ -64,11 +81,7 @@ public class ProAquaApi
             Preferences.Default.Set("must_change_password", data.MustChangePassword);
             return data;
         }
-        catch (HttpRequestException)
-        {
-            throw new Exception("Нет связи");
-        }
-        catch (TaskCanceledException)
+        catch (Exception ex) when (IsConnectivityFailure(ex) || ex.Message == "Нет связи")
         {
             throw new Exception("Нет связи");
         }
@@ -86,7 +99,8 @@ public class ProAquaApi
 
     public async Task ChangePasswordAsync(string currentPassword, string newPassword)
     {
-        var res = await _http.PostAsJsonAsync($"{BaseUrl}/api/auth/change-password", new { currentPassword, newPassword });
+        var res = await SendAsync(() =>
+            _http.PostAsJsonAsync($"{BaseUrl}/api/auth/change-password", new { currentPassword, newPassword }));
         var body = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
             throw new Exception(TryMessage(body) ?? body);
@@ -127,7 +141,7 @@ public class ProAquaApi
 
     public async Task UpdateProfileAsync(string? name)
     {
-        var res = await _http.PutAsJsonAsync($"{BaseUrl}/api/me", new { name });
+        var res = await SendAsync(() => _http.PutAsJsonAsync($"{BaseUrl}/api/me", new { name }));
         var body = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
             await ThrowIfHttpErrorAsync(res.StatusCode, body);
@@ -140,7 +154,7 @@ public class ProAquaApi
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
         content.Add(fileContent, "file", string.IsNullOrWhiteSpace(fileName) ? "avatar.jpg" : fileName);
 
-        var res = await _http.PostAsync($"{BaseUrl}/api/me/avatar", content);
+        var res = await SendAsync(() => _http.PostAsync($"{BaseUrl}/api/me/avatar", content));
         var body = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
             await ThrowIfHttpErrorAsync(res.StatusCode, body);
@@ -161,15 +175,23 @@ public class ProAquaApi
         return ImageSource.FromUri(new Uri(url));
     }
 
-    public Task<List<SlotDto>?> GetSlotsAsync(Guid serviceId, DateTime date)
+    public async Task<List<SlotDto>?> GetSlotsAsync(Guid serviceId, DateTime date)
     {
         var d = date.ToString("yyyy-MM-dd");
-        return _http.GetFromJsonAsync<List<SlotDto>>($"{BaseUrl}/api/bookings/slots?serviceId={serviceId}&date={d}", JsonOptions);
+        var res = await SendAsync(() =>
+            _http.GetAsync($"{BaseUrl}/api/bookings/slots?serviceId={serviceId}&date={d}"));
+        var body = await res.Content.ReadAsStringAsync();
+        if (!res.IsSuccessStatusCode)
+            await ThrowIfHttpErrorAsync(res.StatusCode, body);
+        if (string.IsNullOrWhiteSpace(body))
+            return default;
+        return JsonSerializer.Deserialize<List<SlotDto>>(body, JsonOptions);
     }
 
     public async Task<BookingItem> CreateBookingAsync(Guid serviceId, DateTime startAt, int vehicleType = 0)
     {
-        var res = await _http.PostAsJsonAsync($"{BaseUrl}/api/bookings", new { serviceId, startAt, vehicleType });
+        var res = await SendAsync(() =>
+            _http.PostAsJsonAsync($"{BaseUrl}/api/bookings", new { serviceId, startAt, vehicleType }));
         var body = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
             await ThrowIfHttpErrorAsync(res.StatusCode, body);
@@ -178,7 +200,8 @@ public class ProAquaApi
 
     public async Task RepeatBookingAsync(Guid bookingId, DateTime startAt)
     {
-        var res = await _http.PostAsJsonAsync($"{BaseUrl}/api/bookings/{bookingId}/repeat", new { serviceId = Guid.Empty, startAt });
+        var res = await SendAsync(() =>
+            _http.PostAsJsonAsync($"{BaseUrl}/api/bookings/{bookingId}/repeat", new { serviceId = Guid.Empty, startAt }));
         var body = await res.Content.ReadAsStringAsync();
         if (!res.IsSuccessStatusCode)
             await ThrowIfHttpErrorAsync(res.StatusCode, body);
@@ -188,26 +211,7 @@ public class ProAquaApi
     {
         System.Diagnostics.Debug.WriteLine($"[ProAquaApi] GET {url}");
         var started = DateTime.UtcNow;
-        HttpResponseMessage res;
-        try
-        {
-            res = await _http.GetAsync(url);
-        }
-        catch (HttpRequestException ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] GET failed {url}: {ex.Message}");
-            throw new Exception("Нет связи");
-        }
-        catch (TaskCanceledException ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] GET timeout/cancel {url}: {ex.Message}");
-            throw new Exception("Нет связи");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] GET failed {url}: {ex.Message}");
-            throw;
-        }
+        var res = await SendAsync(() => _http.GetAsync(url));
 
         var ms = (DateTime.UtcNow - started).TotalMilliseconds;
         var body = await res.Content.ReadAsStringAsync();
@@ -219,6 +223,42 @@ public class ProAquaApi
             return default;
 
         return JsonSerializer.Deserialize<T>(body, JsonOptions);
+    }
+
+    private static async Task<HttpResponseMessage> SendAsync(Func<Task<HttpResponseMessage>> send)
+    {
+        try
+        {
+            return await send();
+        }
+        catch (Exception ex) when (IsConnectivityFailure(ex))
+        {
+            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] connectivity: {ex.GetType().Name}: {ex.Message}");
+            throw new Exception("Нет связи");
+        }
+    }
+
+    private static bool IsConnectivityFailure(Exception ex)
+    {
+        for (Exception? e = ex; e is not null; e = e.InnerException)
+        {
+            if (e is HttpRequestException or TaskCanceledException or TimeoutException or IOException)
+                return true;
+
+            var msg = e.Message ?? string.Empty;
+            if (msg.Contains("unexpected end of stream", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("Unable to resolve host", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("failed to connect", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("Connection refused", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("Connection reset", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("Empty reply", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("Software caused connection abort", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("Broken pipe", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("Network is unreachable", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private Task ThrowIfHttpErrorAsync(HttpStatusCode statusCode, string body, bool needsAuth = true)
