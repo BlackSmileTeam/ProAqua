@@ -187,3 +187,7 @@ jobs:
             fi
             docker image prune -f || true
             echo "==> ProAqua deploy done on $TARGET at $(pwd)"
+            echo "==> REMINDER: open public ports if clients time out (UFW + cloud SG):"
+            echo "    sudo ufw allow ${BE_PORT}/tcp && sudo ufw allow ${FE_PORT}/tcp && sudo ufw reload && sudo ufw status"
+            echo "    verify: curl -sS -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:${FE_PORT}/api/health"
+            echo "    public: http://$TARGET:${FE_PORT}/swagger/index.html  (mobile BaseUrl uses :${FE_PORT})"

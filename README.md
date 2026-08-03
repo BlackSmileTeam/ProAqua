@@ -100,7 +100,18 @@ npm run dev
    `docker compose -f docker-compose.production.yml --env-file .env.production up -d --build`.
 
 Порты по умолчанию: backend `55511`, admin `55512`, mysql host `3307`.  
-Nginx проксирует `/api`, `/uploads`, `/swagger` → backend. `ENABLE_SWAGGER=true` по умолчанию.
+Nginx проксирует `/api`, `/uploads`, `/swagger` → backend (`172.17.0.1:55511`, host network). `ENABLE_SWAGGER=true` по умолчанию.
+
+**Firewall:** локальный listen ≠ публичный доступ. На сервере откройте порты:
+
+```bash
+sudo ufw allow 55511/tcp
+sudo ufw allow 55512/tcp
+sudo ufw reload
+sudo ufw status
+```
+
+Также проверьте security group облака, если есть. Подробнее: `deploy/GITHUB_SECRETS.md` (раздел Firewall).
 
 Пример env: `.env.production.example`.
 

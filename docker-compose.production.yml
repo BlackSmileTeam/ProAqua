@@ -71,8 +71,10 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    # Backend uses host network (not on compose DNS). Nginx proxies to host.docker.internal:55511
-    # (see admin/nginx.compose.conf). If you change BACKEND_PORT, update that conf and rebuild admin.
+    # Backend uses host network (not on compose DNS). Nginx proxies to 172.17.0.1:55511
+    # (docker bridge gateway — see admin/nginx.compose.conf). Rebuild admin after conf changes
+    # (image copies nginx at build time). If you change BACKEND_PORT, update that conf too.
+    # extra_hosts kept as fallback if you switch upstream to host.docker.internal.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

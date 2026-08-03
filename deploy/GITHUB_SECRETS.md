@@ -52,11 +52,41 @@ Server=139.100.225.234;Port=3306;Database=proaqua;User=proaqua;Password=ProAquaA
 В `docker-compose.production.yml`:
 
 - `backend` использует `network_mode: host` и слушает `ASPNETCORE_URLS=http://0.0.0.0:${BACKEND_PORT}` (по умолчанию `55511`). С host network + `Server=127.0.0.1` MySQL на хосте доступен напрямую.
-- `admin` (nginx) остаётся в bridge-сети и проксирует API на `host.docker.internal:55511` (`extra_hosts: host-gateway`, см. `admin/nginx.compose.conf`).
+- `admin` (nginx) остаётся в bridge-сети и проксирует `/api/`, `/swagger`, `/uploads/` на **`172.17.0.1:55511`** (default Docker bridge gateway на Ubuntu) — см. `admin/nginx.compose.conf`. Конфиг копируется в образ при **build**; после правки conf нужен rebuild admin (`docker compose ... up -d --build`).
+- Fallback, если bip не `172.17.0.1`: `host.docker.internal:55511` (`extra_hosts: host-gateway` уже в compose) или LAN IP хоста.
 
 Дополнительно workflow **парсит** из строки `User`/`Uid`/`User ID`, `Password`/`Pwd` и `Database`/`Initial Catalog` (python3 на сервере) только для опционального compose-сервиса `mysql` (`MYSQL_*`). Пароль может содержать `$`, backticks, `!` и прочие shell-символы (но не `;` — разделитель полей ADO.NET; избегайте `'` в пароле из‑за single-quote в `.env`).
 
 Compose-сервис `mysql` в профиле `local-mysql` и **не** стартует при обычном деплое; backend не `depends_on` mysql.
+
+### Firewall (UFW) — обязательно для публичного доступа
+
+Слушать `0.0.0.0:55511` на сервере **не значит**, что порт открыт с интернета. Без UFW (и/или cloud security group) браузер с Windows получит `ERR_CONNECTION_TIMED_OUT`.
+
+На сервере (**bebochka** / `PROD_HOST`) один раз:
+
+```bash
+sudo ufw allow 55511/tcp
+sudo ufw allow 55512/tcp
+sudo ufw reload
+sudo ufw status
+```
+
+| Порт | Назначение |
+|------|------------|
+| `55511` | Backend напрямую (Swagger: `http://<host>:55511/swagger`) |
+| `55512` | Admin nginx (публичный фронт: SPA + `/api` + `/swagger`) |
+
+Если сервер в облаке (Yandex Cloud / Selectel / AWS и т.п.) — откройте те же TCP-порты и в **security group / firewall rules** панели провайдера. UFW на VM недостаточен, если SG режет трафик раньше.
+
+Проверка с вашего ПК (после UFW):
+
+```bash
+curl -sS -o NUL -w "%{http_code}" http://139.100.225.234:55512/api/health
+curl -sS -o NUL -w "%{http_code}" http://139.100.225.234:55511/swagger/index.html
+```
+
+Ожидается HTTP 200 (или 3xx), не timeout. Мобильное приложение ходит на **`:55512`**.
 
 ## Что НЕ нужно в GitHub Secrets
 
