@@ -3,6 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+#if ANDROID
+using Xamarin.Android.Net;
+#endif
 
 namespace ProAqua.App.Services;
 
@@ -23,8 +26,14 @@ public class ProAquaApi
 
     public ProAquaApi()
     {
-        // Short-lived pooled connections avoid OkHttp "unexpected end of stream"
-        // when a keep-alive socket is closed by a middlebox/firewall.
+        // Android: native handler — SocketsHttpHandler often hangs on cleartext IP
+        // (no request reaches the server, UI looks frozen / ANR).
+#if ANDROID
+        var handler = new AndroidMessageHandler
+        {
+            ConnectTimeout = TimeSpan.FromSeconds(8)
+        };
+#else
         var handler = new SocketsHttpHandler
         {
             PooledConnectionLifetime = TimeSpan.FromSeconds(30),
@@ -32,11 +41,13 @@ public class ProAquaApi
             ConnectTimeout = TimeSpan.FromSeconds(10),
             AllowAutoRedirect = true
         };
+#endif
         _http = new HttpClient(handler)
         {
-            Timeout = TimeSpan.FromSeconds(20)
+            Timeout = TimeSpan.FromSeconds(18)
         };
         _http.DefaultRequestHeaders.ConnectionClose = true;
+        _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
     public string? Token { get; private set; }
@@ -65,19 +76,31 @@ public class ProAquaApi
 
     public bool MustChangePassword => Preferences.Default.Get("must_change_password", false);
 
-    public async Task<AuthResponse> LoginAsync(string phone, string password)
+    public Task<AuthResponse> LoginAsync(string phone, string password, CancellationToken ct = default)
+        => LoginCoreAsync(phone, password, ct);
+
+    private async Task<AuthResponse> LoginCoreAsync(string phone, string password, CancellationToken ct)
     {
         var normalizedPhone = NormalizePhone(phone);
         var normalizedPassword = (password ?? string.Empty).Trim();
         var url = $"{BaseUrl}/api/auth/login";
         System.Diagnostics.Debug.WriteLine($"[ProAquaApi] POST {url} phone={normalizedPhone}");
+#if ANDROID
+        Android.Util.Log.Info("ProAqua", $"[ProAquaApi] POST {url}");
+#endif
 
         try
         {
-            var res = await SendAsync(() =>
-                _http.PostAsJsonAsync(url, new { phone = normalizedPhone, password = normalizedPassword }));
-            var body = await res.Content.ReadAsStringAsync();
+            using var req = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = JsonContent.Create(new { phone = normalizedPhone, password = normalizedPassword })
+            };
+            var res = await SendAsync(() => _http.SendAsync(req, ct), ct).ConfigureAwait(false);
+            var body = await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             System.Diagnostics.Debug.WriteLine($"[ProAquaApi] login status={(int)res.StatusCode} len={body.Length}");
+#if ANDROID
+            Android.Util.Log.Info("ProAqua", $"[ProAquaApi] login {(int)res.StatusCode} len={body.Length}");
+#endif
             if (!res.IsSuccessStatusCode)
                 throw new Exception(TryMessage(body) ?? $"Ошибка входа ({(int)res.StatusCode})");
             var data = JsonSerializer.Deserialize<AuthResponse>(body, JsonOptions)
@@ -88,9 +111,16 @@ public class ProAquaApi
             Preferences.Default.Set("must_change_password", data.MustChangePassword);
             return data;
         }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException("Таймаут соединения с сервером");
+        }
         catch (Exception ex) when (IsConnectivityFailure(ex) || ex.Message == "Нет связи")
         {
             System.Diagnostics.Debug.WriteLine($"[ProAquaApi] login connectivity: {ex}");
+#if ANDROID
+            Android.Util.Log.Warn("ProAqua", $"[ProAquaApi] connectivity: {ex.Message}");
+#endif
             throw new Exception("Нет связи с сервером. Проверьте интернет.");
         }
     }
@@ -254,11 +284,17 @@ public class ProAquaApi
         return JsonSerializer.Deserialize<T>(body, JsonOptions);
     }
 
-    private static async Task<HttpResponseMessage> SendAsync(Func<Task<HttpResponseMessage>> send)
+    private static async Task<HttpResponseMessage> SendAsync(
+        Func<Task<HttpResponseMessage>> send,
+        CancellationToken ct = default)
     {
         try
         {
-            return await send();
+            return await send().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (IsConnectivityFailure(ex))
         {

@@ -26,9 +26,9 @@
 		<!-- App Identifier -->
 		<ApplicationId>com.proaqua.app</ApplicationId>
 
-		<!-- Versions — fix login crash + logo icon -->
-		<ApplicationDisplayVersion>1.6.3</ApplicationDisplayVersion>
-		<ApplicationVersion>19</ApplicationVersion>
+		<!-- Versions — Android login ANR / native HTTP -->
+		<ApplicationDisplayVersion>1.6.4</ApplicationDisplayVersion>
+		<ApplicationVersion>20</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>
@@ -79,8 +79,6 @@
 		<MauiImage Include="Resources\Images\*" />
 		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
 		<MauiImage Update="Resources\Images\logo.png" Resize="True" BaseSize="256,256" />
-		<MauiImage Update="Resources\Images\icon_eye_open.png" Resize="True" BaseSize="64,64" />
-		<MauiImage Update="Resources\Images\icon_eye_off.png" Resize="True" BaseSize="64,64" />
 
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />

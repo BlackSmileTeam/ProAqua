@@ -34,7 +34,7 @@
                            HeightRequest="48" />
                 </Border>
 
-                <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" BackgroundColor="{StaticResource Gray900}" Padding="8,2,8,2">
+                <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" BackgroundColor="{StaticResource Gray900}" Padding="8,2,4,2">
                     <Grid ColumnDefinitions="*,Auto">
                         <Entry x:Name="PasswordEntry"
                                Placeholder="Пароль"
@@ -44,15 +44,18 @@
                                BackgroundColor="Transparent"
                                HeightRequest="48"
                                Margin="8,0,0,0" />
-                        <ImageButton x:Name="TogglePasswordButton"
-                                     Grid.Column="1"
-                                     Source="icon_eye_off.png"
-                                     WidthRequest="40"
-                                     HeightRequest="40"
-                                     BackgroundColor="Transparent"
-                                     Clicked="OnTogglePassword"
-                                     VerticalOptions="Center"
-                                     Margin="0,0,4,0" />
+                        <!-- Текст вместо тяжёлых PNG — иначе Android ANR при Disable/layout -->
+                        <Button x:Name="TogglePasswordButton"
+                                Grid.Column="1"
+                                Text="Показать"
+                                Clicked="OnTogglePassword"
+                                BackgroundColor="Transparent"
+                                TextColor="{StaticResource Primary}"
+                                FontSize="13"
+                                Padding="8,0"
+                                MinimumWidthRequest="88"
+                                HeightRequest="44"
+                                VerticalOptions="Center" />
                     </Grid>
                 </Border>
 
@@ -71,10 +74,11 @@
             </VerticalStackLayout>
         </ScrollView>
 
-        <!-- Не modal: оверлей на странице — видно спиннер, нет краша Android -->
         <Grid x:Name="BusyOverlay"
               IsVisible="False"
-              BackgroundColor="#CC001C2B">
+              InputTransparent="False"
+              BackgroundColor="#CC001C2B"
+              ZIndex="100">
             <Border StrokeThickness="0"
                     StrokeShape="RoundRectangle 20"
                     BackgroundColor="{StaticResource Gray900}"
@@ -82,7 +86,9 @@
                     HorizontalOptions="Center"
                     VerticalOptions="Center">
                 <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
-                    <ActivityIndicator IsRunning="True"
+                    <ActivityIndicator x:Name="BusySpinner"
+                                       IsRunning="False"
+                                       IsVisible="True"
                                        Color="{StaticResource Primary}"
                                        WidthRequest="44"
                                        HeightRequest="44"
