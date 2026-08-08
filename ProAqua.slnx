@@ -1,4 +1,10 @@
 <Solution>
+  <!-- Debug listed first so VS defaults ActiveCfg to Debug when no .vs user state exists. -->
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <Platform Name="Any CPU" />
+  </Configurations>
   <Folder Name="/backend/">
     <Project Path="backend/ProAqua.Api/ProAqua.Api.csproj" />
   </Folder>

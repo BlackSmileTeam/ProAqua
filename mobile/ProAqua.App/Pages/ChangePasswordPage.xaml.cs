@@ -36,10 +36,14 @@ public partial class ChangePasswordPage : ContentPage
 
             Preferences.Default.Set("must_change_password", false);
             await Ui.ForceClearBusyAsync();
+            await Task.Delay(50);
             if (_isForced)
             {
-                if (Application.Current?.Windows.FirstOrDefault() is { } window)
-                    window.Page = new AppShell();
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    if (Application.Current?.Windows.FirstOrDefault() is { } window)
+                        window.Page = new AppShell();
+                });
             }
             else if (Nav.CanPop)
             {
@@ -48,7 +52,7 @@ public partial class ChangePasswordPage : ContentPage
             }
             else if (Application.Current?.Windows.FirstOrDefault() is { } window)
             {
-                window.Page = new AppShell();
+                await MainThread.InvokeOnMainThreadAsync(() => window.Page = new AppShell());
             }
         }
         catch (Exception ex)

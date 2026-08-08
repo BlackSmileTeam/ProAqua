@@ -3,9 +3,11 @@ using ProAqua.App.Services;
 
 namespace ProAqua.App.Pages;
 
+[QueryProperty(nameof(ServiceIdQuery), "serviceId")]
+[QueryProperty(nameof(TitleHint), "title")]
 public partial class ServiceDetailPage : ContentPage
 {
-    private readonly Guid _serviceId;
+    private Guid _serviceId;
     private ServiceDetail? _detail;
     private ServiceVariantItem? _selected;
     private int _vehicleType;
@@ -13,10 +15,42 @@ public partial class ServiceDetailPage : ContentPage
     private CancellationTokenSource? _loadCts;
     private bool _loadScheduled;
 
-    public ServiceDetailPage(Guid serviceId, string? titleHint = null)
+    /// <summary>Shell-маршрут с query-параметрами.</summary>
+    public static string Route(Guid serviceId, string? titleHint = null)
+    {
+        var route = $"{nameof(ServiceDetailPage)}?serviceId={serviceId:D}";
+        if (!string.IsNullOrWhiteSpace(titleHint))
+            route += $"&title={Uri.EscapeDataString(titleHint)}";
+        return route;
+    }
+
+    public ServiceDetailPage()
     {
         InitializeComponent();
+    }
+
+    public ServiceDetailPage(Guid serviceId, string? titleHint = null) : this()
+    {
         _serviceId = serviceId;
+        ApplyTitleHint(titleHint);
+    }
+
+    public string ServiceIdQuery
+    {
+        set
+        {
+            if (Guid.TryParse(value, out var id))
+                _serviceId = id;
+        }
+    }
+
+    public string TitleHint
+    {
+        set => ApplyTitleHint(Uri.UnescapeDataString(value ?? string.Empty));
+    }
+
+    private void ApplyTitleHint(string? titleHint)
+    {
         if (!string.IsNullOrWhiteSpace(titleHint))
             TitleLabel.Text = titleHint;
     }
@@ -68,6 +102,9 @@ public partial class ServiceDetailPage : ContentPage
 
     private async Task LoadAsync()
     {
+        if (_serviceId == Guid.Empty)
+            return;
+
         _loadCts?.Cancel();
         _loadCts = new CancellationTokenSource();
         var ct = _loadCts.Token;
@@ -91,7 +128,7 @@ public partial class ServiceDetailPage : ContentPage
             TitleLabel.Text = _detail.Title;
             DescriptionLabel.Text = _detail.Description;
             if (!string.IsNullOrWhiteSpace(_detail.ImageUrl))
-                HeroImage.Source = ImageSource.FromUri(new Uri(_detail.ImageUrl));
+                HeroImage.Source = App.Api.ResolveMediaSource(_detail.ImageUrl, "service_wash.png");
 
             PurposeBadge.IsVisible =
                 !string.IsNullOrWhiteSpace(_detail.Purpose) || !string.IsNullOrWhiteSpace(_detail.DetailsHtml);
@@ -131,14 +168,14 @@ public partial class ServiceDetailPage : ContentPage
              <head>
                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                <style>
-                 body { margin: 0; padding: 8px; font-family: -apple-system, Segoe UI, Arial, sans-serif; color: #E8F4F6; background: transparent; }
+                 body { margin: 0; padding: 8px; font-family: -apple-system, Segoe UI, Arial, sans-serif; color: #F5F5F5; background: transparent; }
                  h1,h2,h3,h4 { color: #FFFFFF; margin: 14px 0 8px; }
-                 p, li { line-height: 1.45; color: #CFE3E8; }
+                 p, li { line-height: 1.45; color: #CCCCCC; }
                  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; }
-                 th, td { border: 1px solid #2B4A54; padding: 8px; vertical-align: top; }
-                 th { background: #123647; color: #FFFFFF; text-align: left; }
-                 tr:nth-child(even) td { background: #0F2A36; }
-                 .badge { display:inline-block; padding:4px 8px; border-radius:10px; background:#163A47; color:#26C6DA; font-weight:600; }
+                 th, td { border: 1px solid #3A3A3A; padding: 8px; vertical-align: top; }
+                 th { background: #1A1A1A; color: #FFFFFF; text-align: left; }
+                 tr:nth-child(even) td { background: #111111; }
+                 .badge { display:inline-block; padding:4px 8px; border-radius:10px; background:#1A1A1A; color:#D4AF37; font-weight:600; }
                </style>
              </head>
              <body>
@@ -202,10 +239,10 @@ public partial class ServiceDetailPage : ContentPage
             var selected = i == _vehicleType;
             _vehicleChips[i].Stroke = selected
                 ? (Brush)Application.Current!.Resources["PrimaryBrush"]
-                : Color.FromArgb("#2B4A54");
-            _vehicleChips[i].BackgroundColor = selected ? Color.FromArgb("#2626C6DA") : Colors.Transparent;
+                : Color.FromArgb("#3A3A3A");
+            _vehicleChips[i].BackgroundColor = selected ? Color.FromArgb("#26D4AF37") : Colors.Transparent;
             if (_vehicleChips[i].Content is Label lbl)
-                lbl.TextColor = selected ? Color.FromArgb("#26C6DA") : Color.FromArgb("#8FB3BC");
+                lbl.TextColor = selected ? Color.FromArgb("#D4AF37") : Color.FromArgb("#CCCCCC");
             if (i < labels.Length && _vehicleChips[i].Content is Label l)
                 l.Text = labels[i];
         }
@@ -214,9 +251,9 @@ public partial class ServiceDetailPage : ContentPage
     private static Border MakeChip(string text, bool selected, bool fillWidth = false) => new()
     {
         StrokeThickness = 1,
-        Stroke = selected ? (Brush)Application.Current!.Resources["PrimaryBrush"] : Color.FromArgb("#2B4A54"),
+        Stroke = selected ? (Brush)Application.Current!.Resources["PrimaryBrush"] : Color.FromArgb("#3A3A3A"),
         StrokeShape = new RoundRectangle { CornerRadius = 14 },
-        BackgroundColor = selected ? Color.FromArgb("#2626C6DA") : Colors.Transparent,
+        BackgroundColor = selected ? Color.FromArgb("#26D4AF37") : Colors.Transparent,
         Padding = new Thickness(12, 10),
         HorizontalOptions = fillWidth ? LayoutOptions.Fill : LayoutOptions.Start,
         Content = new Label
@@ -224,7 +261,7 @@ public partial class ServiceDetailPage : ContentPage
             Text = text,
             FontSize = 12,
             HorizontalTextAlignment = TextAlignment.Center,
-            TextColor = selected ? Color.FromArgb("#26C6DA") : Color.FromArgb("#8FB3BC")
+            TextColor = selected ? Color.FromArgb("#D4AF37") : Color.FromArgb("#CCCCCC")
         }
     };
 
@@ -240,7 +277,7 @@ public partial class ServiceDetailPage : ContentPage
             VariantsHost.Children.Add(new Label
             {
                 Text = "Для этой услуги пока нет вариантов",
-                TextColor = Color.FromArgb("#8FB3BC")
+                TextColor = Color.FromArgb("#CCCCCC")
             });
             return;
         }
@@ -252,7 +289,7 @@ public partial class ServiceDetailPage : ContentPage
                 StrokeThickness = 1,
                 Stroke = (Brush)Application.Current!.Resources["CardStrokeBrush"],
                 StrokeShape = new RoundRectangle { CornerRadius = 14 },
-                BackgroundColor = Color.FromArgb("#140A2F3F"),
+                BackgroundColor = Color.FromArgb("#140A0A0A"),
                 Padding = 12
             };
             var price = PriceFor(v, _vehicleType);
@@ -260,14 +297,14 @@ public partial class ServiceDetailPage : ContentPage
             var desc = new Label
             {
                 Text = string.IsNullOrWhiteSpace(v.Description) ? " " : v.Description,
-                TextColor = Color.FromArgb("#8FB3BC"),
+                TextColor = Color.FromArgb("#CCCCCC"),
                 FontSize = 12,
                 IsVisible = !string.IsNullOrWhiteSpace(v.Description)
             };
             var priceLbl = new Label
             {
                 Text = $"{price:0} ₽",
-                TextColor = Color.FromArgb("#26C6DA"),
+                TextColor = Color.FromArgb("#D4AF37"),
                 FontAttributes = FontAttributes.Bold,
                 FontSize = 15
             };
@@ -280,7 +317,7 @@ public partial class ServiceDetailPage : ContentPage
                     HighlightSelected();
                     UpdateSelectedPrice();
                     if (!string.IsNullOrWhiteSpace(v.ImageUrl))
-                        HeroImage.Source = ImageSource.FromUri(new Uri(v.ImageUrl!));
+                        HeroImage.Source = App.Api.ResolveMediaSource(v.ImageUrl, "service_wash.png");
                 })
             });
             card.ClassId = v.Id.ToString();
@@ -309,7 +346,7 @@ public partial class ServiceDetailPage : ContentPage
             child.Stroke = selected
                 ? (Brush)Application.Current!.Resources["PrimaryBrush"]
                 : (Brush)Application.Current!.Resources["CardStrokeBrush"];
-            child.BackgroundColor = selected ? Color.FromArgb("#2626C6DA") : Color.FromArgb("#140A2F3F");
+            child.BackgroundColor = selected ? Color.FromArgb("#26D4AF37") : Color.FromArgb("#140A0A0A");
         }
         BookButton.IsEnabled = _selected is not null;
     }

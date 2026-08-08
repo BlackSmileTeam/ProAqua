@@ -26,9 +26,9 @@
 		<!-- App Identifier -->
 		<ApplicationId>com.proaqua.app</ApplicationId>
 
-		<!-- Versions — bump so Android refreshes launcher icon -->
-		<ApplicationDisplayVersion>1.5.1</ApplicationDisplayVersion>
-		<ApplicationVersion>14</ApplicationVersion>
+		<!-- Versions — fix login crash + logo icon -->
+		<ApplicationDisplayVersion>1.6.3</ApplicationDisplayVersion>
+		<ApplicationVersion>19</ApplicationVersion>
 
 		<!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
 		<WindowsPackageType>None</WindowsPackageType>
@@ -41,19 +41,47 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 	</PropertyGroup>
 
-	<ItemGroup>
-		<!-- App Icon — ПроАква / ProAqua -->
-		<MauiIcon Include="Resources\AppIcon\appicon.png" Color="#001C2B" BaseSize="512,512" />
+	<!--
+	  Android F5 / VS InDebugMode: reads AndroidIncludeDebugSymbols (else DebugSymbols) at
+	  static evaluation time — NOT from build Targets. Xamarin.Android.Common.targets Choose
+	  overwrites AndroidIncludeDebugSymbols after normal csproj PropertyGroups, so we also
+	  force again in Directory.Build.targets + ProAqua.ForceAndroidDebugSymbols.targets
+	  (AfterMicrosoftNETSdkTargets, after the Choose). Forced for ALL Android configs so
+	  Release toolbar selection still allows deploy/debug attach.
+	-->
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<AndroidIncludeDebugSymbols>true</AndroidIncludeDebugSymbols>
+		<DebugSymbols>true</DebugSymbols>
+		<AndroidManagedSymbols>true</AndroidManagedSymbols>
+		<DebugType>portable</DebugType>
+		<DebuggerSupport>true</DebuggerSupport>
+	</PropertyGroup>
+	<PropertyGroup Condition="$([System.String]::Copy('$(Configuration)').StartsWith('Debug'))">
+		<Optimize>false</Optimize>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-android|AnyCPU'">
+	  <AndroidPackageFormat>apk</AndroidPackageFormat>
+	  <!-- Sideload: trimming/AOT sometimes crash on login when replacing Window.Page -->
+	  <PublishTrimmed>false</PublishTrimmed>
+	  <RunAOTCompilation>false</RunAOTCompilation>
+	</PropertyGroup>
 
-		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\splash.png" Color="#001C2B" BaseSize="512,512" Resize="True" />
+	<ItemGroup>
+		<!-- App Icon: логотип ПроАква -->
+		<MauiIcon Include="Resources\AppIcon\appicon.png" Color="#000000" BaseSize="512,512" />
+
+		<!-- Splash Screen — тот же логотип -->
+		<MauiSplashScreen Include="Resources\Splash\splash.png" Color="#000000" BaseSize="512,512" Resize="True" />
 
 		<!-- Images -->
 		<!-- Photos are shipped at their native size: Resize/BaseSize upscaled them into
 		     multi-megabyte density drawables that failed to decode on device. -->
 		<MauiImage Include="Resources\Images\*" />
 		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
-		
+		<MauiImage Update="Resources\Images\logo.png" Resize="True" BaseSize="256,256" />
+		<MauiImage Update="Resources\Images\icon_eye_open.png" Resize="True" BaseSize="64,64" />
+		<MauiImage Update="Resources\Images\icon_eye_off.png" Resize="True" BaseSize="64,64" />
+
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
 

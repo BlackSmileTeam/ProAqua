@@ -15,9 +15,9 @@ public class MainActivity : MauiAppCompatActivity
 
         if (Window is null) return;
 
-        var navy = Android.Graphics.Color.ParseColor("#07151C");
-        Window.SetStatusBarColor(navy);
-        Window.SetNavigationBarColor(navy);
+        var black = Android.Graphics.Color.ParseColor("#000000");
+        Window.SetStatusBarColor(black);
+        Window.SetNavigationBarColor(black);
 
         if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
         {

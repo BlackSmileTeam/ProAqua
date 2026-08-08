@@ -5,42 +5,96 @@
              BackgroundColor="{StaticResource MidnightBlue}"
              Title="ПроАква"
              Shell.NavBarIsVisible="False">
-    <VerticalStackLayout Padding="28" Spacing="18" VerticalOptions="Center">
-        <Image Source="app-icon.png" WidthRequest="64" HeightRequest="64" HorizontalOptions="Center" />
-        <Label Text="ПроАква" FontSize="36" FontAttributes="Bold" TextColor="{StaticResource Primary}" HorizontalTextAlignment="Center" />
-        <Label Text="Мойка и детейлинг"
-               TextColor="{StaticResource Gray300}"
-               FontSize="14"
-               HorizontalTextAlignment="Center"
-               Margin="0,-8,0,8" />
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout Padding="28" Spacing="18" VerticalOptions="Center">
+                <Image Source="logo.png"
+                       WidthRequest="96"
+                       HeightRequest="96"
+                       HorizontalOptions="Center"
+                       Aspect="AspectFit" />
+                <Label Text="ПроАква"
+                       FontSize="36"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Primary}"
+                       HorizontalTextAlignment="Center" />
+                <Label Text="Мойка и детейлинг"
+                       TextColor="{StaticResource Gray300}"
+                       FontSize="14"
+                       HorizontalTextAlignment="Center"
+                       Margin="0,-8,0,8" />
 
-        <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" BackgroundColor="{StaticResource Gray900}" Padding="16,2">
-            <Entry x:Name="PhoneEntry"
-                   Placeholder="Телефон"
-                   Keyboard="Telephone"
-                   TextColor="White"
-                   PlaceholderColor="{StaticResource Gray400}"
-                   BackgroundColor="Transparent"
-                   HeightRequest="48" />
-        </Border>
+                <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" BackgroundColor="{StaticResource Gray900}" Padding="16,2">
+                    <Entry x:Name="PhoneEntry"
+                           Placeholder="Телефон"
+                           Keyboard="Telephone"
+                           TextColor="White"
+                           PlaceholderColor="{StaticResource Gray400}"
+                           BackgroundColor="Transparent"
+                           HeightRequest="48" />
+                </Border>
 
-        <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" BackgroundColor="{StaticResource Gray900}" Padding="16,2">
-            <Entry x:Name="PasswordEntry"
-                   Placeholder="Пароль"
-                   IsPassword="True"
-                   TextColor="White"
-                   PlaceholderColor="{StaticResource Gray400}"
-                   BackgroundColor="Transparent"
-                   HeightRequest="48" />
-        </Border>
+                <Border StrokeThickness="0" StrokeShape="RoundRectangle 22" BackgroundColor="{StaticResource Gray900}" Padding="8,2,8,2">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Entry x:Name="PasswordEntry"
+                               Placeholder="Пароль"
+                               IsPassword="True"
+                               TextColor="White"
+                               PlaceholderColor="{StaticResource Gray400}"
+                               BackgroundColor="Transparent"
+                               HeightRequest="48"
+                               Margin="8,0,0,0" />
+                        <ImageButton x:Name="TogglePasswordButton"
+                                     Grid.Column="1"
+                                     Source="icon_eye_off.png"
+                                     WidthRequest="40"
+                                     HeightRequest="40"
+                                     BackgroundColor="Transparent"
+                                     Clicked="OnTogglePassword"
+                                     VerticalOptions="Center"
+                                     Margin="0,0,4,0" />
+                    </Grid>
+                </Border>
 
-        <Button Text="Войти"
-                Clicked="OnLoginClicked"
-                BackgroundColor="{StaticResource Primary}"
-                TextColor="White"
-                FontAttributes="Bold"
-                CornerRadius="22"
-                HeightRequest="52" />
-        <Label x:Name="ErrorLabel" TextColor="#FB7185" HorizontalTextAlignment="Center" />
-    </VerticalStackLayout>
+                <Button x:Name="LoginButton"
+                        Text="Войти"
+                        Clicked="OnLoginClicked"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="White"
+                        FontAttributes="Bold"
+                        CornerRadius="22"
+                        HeightRequest="52" />
+
+                <Label x:Name="ErrorLabel"
+                       TextColor="#FB7185"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Не modal: оверлей на странице — видно спиннер, нет краша Android -->
+        <Grid x:Name="BusyOverlay"
+              IsVisible="False"
+              BackgroundColor="#CC001C2B">
+            <Border StrokeThickness="0"
+                    StrokeShape="RoundRectangle 20"
+                    BackgroundColor="{StaticResource Gray900}"
+                    Padding="28,24"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                <VerticalStackLayout Spacing="14" HorizontalOptions="Center">
+                    <ActivityIndicator IsRunning="True"
+                                       Color="{StaticResource Primary}"
+                                       WidthRequest="44"
+                                       HeightRequest="44"
+                                       HorizontalOptions="Center" />
+                    <Label x:Name="BusyLabel"
+                           Text="Вход…"
+                           TextColor="White"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+    </Grid>
 </ContentPage>

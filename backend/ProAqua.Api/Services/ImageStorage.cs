@@ -35,8 +35,18 @@ public static class ImageStorage
 
     public static string AbsoluteImageUrl(HttpRequest request, string relativePath)
     {
-        var baseUrl = $"{request.Scheme}://{request.Host}";
-        return baseUrl + relativePath;
+        // Prefer public host from reverse proxy (nginx $http_host / X-Forwarded-Host)
+        // so image URLs keep the published port (e.g. :55512), not the backend listen port.
+        var forwardedHost = request.Headers["X-Forwarded-Host"].FirstOrDefault()
+            ?? request.Headers["X-Original-Host"].FirstOrDefault();
+        var host = !string.IsNullOrWhiteSpace(forwardedHost)
+            ? forwardedHost.Split(',', 2)[0].Trim()
+            : request.Host.Value;
+        var scheme = request.Headers["X-Forwarded-Proto"].FirstOrDefault()
+            ?? request.Scheme;
+        if (scheme.Contains(',', StringComparison.Ordinal))
+            scheme = scheme.Split(',', 2)[0].Trim();
+        return $"{scheme}://{host}{relativePath}";
     }
 
     public static byte[]? ReadSeedFile(string fileName)

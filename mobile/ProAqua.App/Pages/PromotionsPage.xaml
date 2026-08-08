@@ -29,7 +29,7 @@
                             <Border StrokeThickness="1"
                                     Stroke="{StaticResource CardStrokeBrush}"
                                     StrokeShape="RoundRectangle 16"
-                                    BackgroundColor="#140A2F3F"
+                                    BackgroundColor="#140A0A0A"
                                     Padding="0">
                                 <VerticalStackLayout Spacing="0">
                                     <Border StrokeThickness="0"

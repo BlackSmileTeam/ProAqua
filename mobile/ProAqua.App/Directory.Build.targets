@@ -1,0 +1,26 @@
+<Project>
+	<!--
+	  CRITICAL: VS InDebugMode reads AndroidIncludeDebugSymbols / DebugSymbols via static
+	  project evaluation (design-time / deploy-start). A Target that sets them at build time
+	  is TOO LATE.
+
+	  Top-level PropertyGroups in this file are evaluated statically. However, for .NET Android
+	  the Choose/When in Xamarin.Android.Common.targets is imported via AfterMicrosoftNETSdkTargets
+	  *after* Directory.Build.targets — so values set here alone get overwritten to False
+	  (especially Release). We therefore ALSO append ProAqua.ForceAndroidDebugSymbols.targets
+	  to AfterMicrosoftNETSdkTargets so a second top-level PropertyGroup runs *after* that Choose
+	  and wins for evaluation (still not inside a Target).
+
+	  Forced for ALL Android configs (Debug + Release) so F5 works even if the toolbar is Release.
+	-->
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<AndroidIncludeDebugSymbols>true</AndroidIncludeDebugSymbols>
+		<DebugSymbols>true</DebugSymbols>
+		<AndroidManagedSymbols>true</AndroidManagedSymbols>
+		<DebugType Condition="'$(DebugType)' == '' or '$(DebugType)' == 'none' or '$(DebugType)' == 'None'">portable</DebugType>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<AfterMicrosoftNETSdkTargets>$(AfterMicrosoftNETSdkTargets);$(MSBuildThisFileDirectory)ProAqua.ForceAndroidDebugSymbols.targets</AfterMicrosoftNETSdkTargets>
+	</PropertyGroup>
+</Project>

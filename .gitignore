@@ -7,3 +7,11 @@
 .env.production
 *.user
 .DS_Store
+
+*.keystore
+*.jks
+mobile/publish-apk/
+mobile/publish-apk-*/
+mobile/publish-apk-log.txt
+tools/__pycache__/
+preprocessed.xml

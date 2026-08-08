@@ -53,7 +53,7 @@ public partial class ServicesCatalogPage : ContentPage
                 CategoriesHost.Children.Add(new Label
                 {
                     Text = "Список услуг пока пуст",
-                    TextColor = Color.FromArgb("#8FB3BC"),
+                    TextColor = Color.FromArgb("#CCCCCC"),
                     FontSize = 14
                 });
             }
@@ -71,26 +71,32 @@ public partial class ServicesCatalogPage : ContentPage
     private View BuildCategorySection(string key, string title, string subtitle, string icon, List<ServiceItem> group)
     {
         var expanded = _expanded.GetValueOrDefault(key, false);
-        var body = new VerticalStackLayout { Spacing = 10, IsVisible = expanded };
-        foreach (var service in group)
-            body.Children.Add(BuildServiceRow(service));
+
+        // Services sit inside the same outer border as the header (no nested card strokes).
+        var body = new VerticalStackLayout { Spacing = 0, IsVisible = expanded };
+        for (var i = 0; i < group.Count; i++)
+        {
+            if (i > 0)
+            {
+                body.Children.Add(new BoxView
+                {
+                    HeightRequest = 1,
+                    Color = Color.FromArgb("#33D4AF37"),
+                    Margin = new Thickness(0, 8, 0, 8)
+                });
+            }
+
+            body.Children.Add(BuildServiceRow(group[i]));
+        }
 
         var chevron = new Label
         {
             Text = expanded ? "▾" : "▸",
             FontSize = 18,
-            TextColor = Color.FromArgb("#26C6DA"),
+            TextColor = Color.FromArgb("#D4AF37"),
             VerticalOptions = LayoutOptions.Center
         };
 
-        var header = new Border
-        {
-            StrokeThickness = 1,
-            Stroke = (Brush)Application.Current!.Resources["CardStrokeBrush"],
-            StrokeShape = new RoundRectangle { CornerRadius = 16 },
-            BackgroundColor = Color.FromArgb("#140A2F3F"),
-            Padding = 14
-        };
         var categoryIcon = new Image
         {
             Source = ImageSource.FromFile(icon),
@@ -108,7 +114,7 @@ public partial class ServicesCatalogPage : ContentPage
             Children =
             {
                 new Label { Text = title, FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = Colors.White },
-                new Label { Text = subtitle, FontSize = 12, TextColor = Color.FromArgb("#8FB3BC") }
+                new Label { Text = subtitle, FontSize = 12, TextColor = Color.FromArgb("#CCCCCC") }
             }
         };
 
@@ -125,9 +131,9 @@ public partial class ServicesCatalogPage : ContentPage
         headerGrid.Add(categoryIcon, 0);
         headerGrid.Add(titles, 1);
         headerGrid.Add(chevron, 2);
-        header.Content = headerGrid;
 
-        header.GestureRecognizers.Add(new TapGestureRecognizer
+        var headerTap = new ContentView { Content = headerGrid };
+        headerTap.GestureRecognizers.Add(new TapGestureRecognizer
         {
             Command = new Command(() =>
             {
@@ -137,30 +143,41 @@ public partial class ServicesCatalogPage : ContentPage
             })
         });
 
-        return new VerticalStackLayout
+        var content = new VerticalStackLayout
         {
             Spacing = 10,
-            Children = { header, body }
+            Children = { headerTap, body }
+        };
+
+        // One shared outline for title (+ list when expanded).
+        return new Border
+        {
+            StrokeThickness = 1,
+            Stroke = (Brush)Application.Current!.Resources["CardStrokeBrush"],
+            StrokeShape = new RoundRectangle { CornerRadius = 16 },
+            BackgroundColor = Color.FromArgb("#140A0A0A"),
+            Padding = 14,
+            Content = content
         };
     }
 
     private View BuildServiceRow(ServiceItem service)
     {
-        ImageSource image = !string.IsNullOrWhiteSpace(service.ImageUrl)
-            ? ImageSource.FromUri(new Uri(service.ImageUrl))
-            : ImageSource.FromFile("service_wash.png");
+        var image = App.Api.ResolveMediaSource(service.ImageUrl, "service_wash.png");
 
+        // No stroke — parent category Border already outlines the whole group.
         var card = new Border
         {
-            StrokeThickness = 1,
-            Stroke = (Brush)Application.Current!.Resources["CardStrokeBrush"],
-            StrokeShape = new RoundRectangle { CornerRadius = 16 },
-            BackgroundColor = Color.FromArgb("#140A2F3F"),
+            StrokeThickness = 0,
+            Stroke = Colors.Transparent,
+            StrokeShape = new RoundRectangle { CornerRadius = 12 },
+            BackgroundColor = Color.FromArgb("#1A0A0A0A"),
             Padding = 0
         };
 
         var grid = new Grid
         {
+            IsClippedToBounds = true,
             ColumnDefinitions = new ColumnDefinitionCollection
             {
                 new(new GridLength(96)),
@@ -195,7 +212,7 @@ public partial class ServicesCatalogPage : ContentPage
                 {
                     Text = service.Description,
                     FontSize = 12,
-                    TextColor = Color.FromArgb("#8FB3BC"),
+                    TextColor = Color.FromArgb("#CCCCCC"),
                     MaxLines = 2,
                     LineBreakMode = LineBreakMode.TailTruncation
                 },
@@ -204,7 +221,7 @@ public partial class ServicesCatalogPage : ContentPage
                     Text = $"от {service.PriceFrom:0} ₽",
                     FontSize = 14,
                     FontAttributes = FontAttributes.Bold,
-                    TextColor = Color.FromArgb("#26C6DA")
+                    TextColor = Color.FromArgb("#D4AF37")
                 }
             }
         }, 1);
@@ -214,7 +231,14 @@ public partial class ServicesCatalogPage : ContentPage
         {
             Command = new Command(async () =>
             {
-                await Nav.PushAsync(new ServiceDetailPage(service.Id, service.Title));
+                try
+                {
+                    await Nav.GoToAsync(ServiceDetailPage.Route(service.Id, service.Title));
+                }
+                catch
+                {
+                    // Ignore navigation races (double-tap / disappearing page).
+                }
             })
         });
         return card;

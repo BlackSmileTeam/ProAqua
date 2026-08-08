@@ -26,12 +26,16 @@ public partial class PromotionsPage : ContentPage
         try
         {
             var promos = await App.Api.GetPromotionsAsync() ?? [];
-            var cards = promos.Select(p => new PromotionCard(
-                p.Title,
-                p.Description,
-                FormatPeriod(p.StartsAt, p.EndsAt),
-                p.ImageUrl,
-                !string.IsNullOrWhiteSpace(p.ImageUrl))).ToList();
+            var cards = promos.Select(p =>
+            {
+                var imageUrl = ProAquaApi.AbsoluteMediaUrl(p.ImageUrl);
+                return new PromotionCard(
+                    p.Title,
+                    p.Description,
+                    FormatPeriod(p.StartsAt, p.EndsAt),
+                    imageUrl,
+                    !string.IsNullOrWhiteSpace(imageUrl));
+            }).ToList();
             EmptyLabel.IsVisible = cards.Count == 0;
             PromotionsList.ItemsSource = cards;
         }

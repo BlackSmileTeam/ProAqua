@@ -67,23 +67,31 @@ public class ProAquaApi
 
     public async Task<AuthResponse> LoginAsync(string phone, string password)
     {
+        var normalizedPhone = NormalizePhone(phone);
+        var normalizedPassword = (password ?? string.Empty).Trim();
+        var url = $"{BaseUrl}/api/auth/login";
+        System.Diagnostics.Debug.WriteLine($"[ProAquaApi] POST {url} phone={normalizedPhone}");
+
         try
         {
-            var normalizedPhone = NormalizePhone(phone);
-            var normalizedPassword = (password ?? string.Empty).Trim();
             var res = await SendAsync(() =>
-                _http.PostAsJsonAsync($"{BaseUrl}/api/auth/login", new { phone = normalizedPhone, password = normalizedPassword }));
+                _http.PostAsJsonAsync(url, new { phone = normalizedPhone, password = normalizedPassword }));
             var body = await res.Content.ReadAsStringAsync();
+            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] login status={(int)res.StatusCode} len={body.Length}");
             if (!res.IsSuccessStatusCode)
                 throw new Exception(TryMessage(body) ?? $"Ошибка входа ({(int)res.StatusCode})");
-            var data = JsonSerializer.Deserialize<AuthResponse>(body, JsonOptions)!;
+            var data = JsonSerializer.Deserialize<AuthResponse>(body, JsonOptions)
+                       ?? throw new Exception("Пустой ответ сервера при входе");
+            if (string.IsNullOrWhiteSpace(data.Token))
+                throw new Exception("Сервер не вернул токен");
             SetToken(data.Token);
             Preferences.Default.Set("must_change_password", data.MustChangePassword);
             return data;
         }
         catch (Exception ex) when (IsConnectivityFailure(ex) || ex.Message == "Нет связи")
         {
-            throw new Exception("Нет связи");
+            System.Diagnostics.Debug.WriteLine($"[ProAquaApi] login connectivity: {ex}");
+            throw new Exception("Нет связи с сервером. Проверьте интернет.");
         }
     }
 
@@ -163,16 +171,37 @@ public class ProAquaApi
         return doc.RootElement.GetProperty("avatarUrl").GetString() ?? string.Empty;
     }
 
-    public ImageSource ResolveMediaSource(string? relativeOrAbsoluteUrl, string fallbackLocal)
+    /// <summary>
+    /// Turns API media paths into a loadable absolute URL on <see cref="BaseUrl"/>.
+    /// Backend AbsoluteImageUrl often omits the nginx port (Host=$host strips :55512),
+    /// producing http://host/api/.../image which 404s — rewrite same-host URLs onto BaseUrl.
+    /// </summary>
+    public static string? AbsoluteMediaUrl(string? relativeOrAbsoluteUrl)
     {
         if (string.IsNullOrWhiteSpace(relativeOrAbsoluteUrl))
+            return null;
+
+        var raw = relativeOrAbsoluteUrl.Trim();
+        if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out var baseUri))
+            return raw;
+
+        if (Uri.TryCreate(raw, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        {
+            if (string.Equals(uri.Host, baseUri.Host, StringComparison.OrdinalIgnoreCase))
+                return $"{baseUri.GetLeftPart(UriPartial.Authority)}{uri.PathAndQuery}";
+            return raw;
+        }
+
+        return $"{baseUri.GetLeftPart(UriPartial.Authority)}/{raw.TrimStart('/')}";
+    }
+
+    public ImageSource ResolveMediaSource(string? relativeOrAbsoluteUrl, string fallbackLocal)
+    {
+        var absolute = AbsoluteMediaUrl(relativeOrAbsoluteUrl);
+        if (absolute is null)
             return ImageSource.FromFile(fallbackLocal);
-
-        if (relativeOrAbsoluteUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
-            return ImageSource.FromUri(new Uri(relativeOrAbsoluteUrl));
-
-        var url = $"{BaseUrl.TrimEnd('/')}/{relativeOrAbsoluteUrl.TrimStart('/')}";
-        return ImageSource.FromUri(new Uri(url));
+        return ImageSource.FromUri(new Uri(absolute));
     }
 
     public async Task<List<SlotDto>?> GetSlotsAsync(Guid serviceId, DateTime date)

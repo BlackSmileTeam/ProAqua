@@ -105,13 +105,16 @@ if (app.Configuration.GetValue("Swagger:Enabled", true))
 app.UseCors();
 app.Use(async (ctx, next) =>
 {
+    var path = ctx.Request.Path.Value ?? string.Empty;
+    var isHealth = path.Equals("/api/health", StringComparison.OrdinalIgnoreCase);
     var log = ctx.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("Http");
     var sw = System.Diagnostics.Stopwatch.StartNew();
-    log.LogInformation("→ {Method} {Path}{Query} ip={Ip}",
-        ctx.Request.Method,
-        ctx.Request.Path,
-        ctx.Request.QueryString,
-        ctx.Connection.RemoteIpAddress);
+    // Health checks spam Docker/nginx — keep them at Debug so login/auth stay visible.
+    if (isHealth)
+        log.LogDebug("→ {Method} {Path} ip={Ip}", ctx.Request.Method, ctx.Request.Path, ctx.Connection.RemoteIpAddress);
+    else
+        log.LogInformation("→ {Method} {Path}{Query} ip={Ip}",
+            ctx.Request.Method, ctx.Request.Path, ctx.Request.QueryString, ctx.Connection.RemoteIpAddress);
     try
     {
         await next();
@@ -119,8 +122,12 @@ app.Use(async (ctx, next) =>
     finally
     {
         sw.Stop();
-        log.LogInformation("← {Method} {Path} {Status} {Ms}ms",
-            ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
+        if (isHealth)
+            log.LogDebug("← {Method} {Path} {Status} {Ms}ms",
+                ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
+        else
+            log.LogInformation("← {Method} {Path} {Status} {Ms}ms",
+                ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
     }
 });
 app.UseStaticFiles();

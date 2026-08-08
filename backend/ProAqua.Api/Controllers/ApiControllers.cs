@@ -288,12 +288,25 @@ public class BookingsController(ProAquaDbContext db, BookingService bookings) : 
         var service = await db.Services.FindAsync([serviceId], ct);
         if (service is null) return NotFound();
         var day = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
+        var category = service.Category;
+        // Slot is busy if any non-finished booking overlaps for a service in the same category.
+        var blockingStatuses = new[]
+        {
+            BookingStatus.Pending,
+            BookingStatus.Confirmed,
+            BookingStatus.InProgress,
+            BookingStatus.Ready
+        };
         var slots = new List<SlotDto>();
         for (var hour = 9; hour <= 20; hour++)
         {
             var start = day.AddHours(hour);
             var end = start.AddMinutes(service.DurationMinutes);
-            var busy = await db.Bookings.AnyAsync(b => b.Status != BookingStatus.Cancelled && b.StartAt < end && b.EndAt > start, ct);
+            var busy = await db.Bookings.AnyAsync(b =>
+                blockingStatuses.Contains(b.Status) &&
+                b.Service != null &&
+                b.Service.Category == category &&
+                b.StartAt < end && b.EndAt > start, ct);
             slots.Add(new SlotDto(start, !busy));
         }
         return Ok(slots);

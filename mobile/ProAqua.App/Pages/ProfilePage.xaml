@@ -53,7 +53,7 @@
             <Border StrokeThickness="1"
                     Stroke="{StaticResource CardStrokeBrush}"
                     StrokeShape="RoundRectangle 18"
-                    BackgroundColor="#001C2B"
+                    BackgroundColor="#000000"
                     Padding="0"
                     HeightRequest="188">
                 <Grid>
@@ -67,10 +67,10 @@
                     <BoxView InputTransparent="True">
                         <BoxView.Background>
                             <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                                <GradientStop Color="#F2001C2B" Offset="0" />
-                                <GradientStop Color="#CC001C2B" Offset="0.52" />
-                                <GradientStop Color="#66001C2B" Offset="0.78" />
-                                <GradientStop Color="#33001C2B" Offset="1" />
+                                <GradientStop Color="#F2000000" Offset="0" />
+                                <GradientStop Color="#CC000000" Offset="0.52" />
+                                <GradientStop Color="#66000000" Offset="0.78" />
+                                <GradientStop Color="#33000000" Offset="1" />
                             </LinearGradientBrush>
                         </BoxView.Background>
                     </BoxView>
@@ -112,7 +112,7 @@
                             </VerticalStackLayout>
                         </Grid>
 
-                        <BoxView HeightRequest="1" Color="#40FFFFFF" HorizontalOptions="Fill" />
+                        <BoxView HeightRequest="1" Color="#336B5A28" HorizontalOptions="Fill" />
 
                         <VerticalStackLayout Spacing="2" Margin="0,0,0,4">
                             <Label Text="Ваши бонусы"
@@ -130,7 +130,7 @@
             <Border StrokeThickness="1"
                     Stroke="{StaticResource CardStrokeBrush}"
                     StrokeShape="RoundRectangle 18"
-                    BackgroundColor="#140A2F3F"
+                    BackgroundColor="#140A0A0A"
                     Padding="16">
                 <VerticalStackLayout Spacing="12">
                     <HorizontalStackLayout Spacing="10">

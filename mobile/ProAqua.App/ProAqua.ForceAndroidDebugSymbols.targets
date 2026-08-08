@@ -1,0 +1,17 @@
+<!--
+  Imported via AfterMicrosoftNETSdkTargets *after* Xamarin.Android.Common.targets Choose/When
+  (which always rewrites AndroidIncludeDebugSymbols). Top-level PropertyGroups here are still
+  static evaluation — not build-time Targets — so VS InDebugMode / -getProperty see them.
+
+  Forced for ALL Android configurations (Debug and Release) to unblock F5 when the toolbar
+  is accidentally on Release.
+-->
+<Project>
+	<PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+		<AndroidIncludeDebugSymbols>true</AndroidIncludeDebugSymbols>
+		<DebugSymbols>true</DebugSymbols>
+		<AndroidManagedSymbols>true</AndroidManagedSymbols>
+		<DebugType Condition="'$(DebugType)' == '' or '$(DebugType)' == 'none' or '$(DebugType)' == 'None'">portable</DebugType>
+		<DebuggerSupport>true</DebuggerSupport>
+	</PropertyGroup>
+</Project>

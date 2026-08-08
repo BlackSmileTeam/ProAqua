@@ -9,7 +9,7 @@
         <Grid Grid.Row="0" Padding="16,12,16,0" ColumnDefinitions="Auto,*" ColumnSpacing="8">
             <Border StrokeThickness="0"
                     StrokeShape="RoundRectangle 12"
-                    BackgroundColor="#140A2F3F"
+                    BackgroundColor="#140A0A0A"
                     WidthRequest="40"
                     HeightRequest="40">
                 <Label Text="←"
@@ -45,7 +45,7 @@
                    FontAttributes="Bold"
                    FontSize="15" />
 
-            <Label Text="Свободное время (24 ч)" TextColor="{StaticResource Gray300}" FontSize="14" />
+            <Label Text="Свободное время" TextColor="{StaticResource Gray300}" FontSize="14" />
 
             <Label x:Name="NoSlotsLabel"
                    IsVisible="False"

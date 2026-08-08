@@ -36,7 +36,7 @@
                                         StrokeThickness="1"
                                         Stroke="{StaticResource CardStrokeBrush}"
                                         StrokeShape="RoundRectangle 16"
-                                        BackgroundColor="#140A2F3F">
+                                        BackgroundColor="#140A0A0A">
                                     <VerticalStackLayout Spacing="8">
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                             <Label Text="{Binding ServiceTitle}"
@@ -93,7 +93,7 @@
                                         StrokeThickness="1"
                                         Stroke="{StaticResource CardStrokeBrush}"
                                         StrokeShape="RoundRectangle 16"
-                                        BackgroundColor="#140A2F3F">
+                                        BackgroundColor="#140A0A0A">
                                     <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
                                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                                             <Label Text="{Binding ServiceTitle}"

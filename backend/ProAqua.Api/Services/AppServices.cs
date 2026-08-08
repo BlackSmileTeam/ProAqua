@@ -307,8 +307,18 @@ public class BookingService(ProAquaDbContext db, IAmoCrmSync amoCrm, IPushSender
         var duration = Math.Max(30, service.DurationMinutes);
         var endAt = startAt.AddMinutes(duration);
 
+        // Block only overlapping bookings in the same service category (completed/cancelled/no-show free the slot).
+        var blockingStatuses = new[]
+        {
+            BookingStatus.Pending,
+            BookingStatus.Confirmed,
+            BookingStatus.InProgress,
+            BookingStatus.Ready
+        };
         var overlap = await db.Bookings.AnyAsync(b =>
-            b.Status != BookingStatus.Cancelled &&
+            blockingStatuses.Contains(b.Status) &&
+            b.Service != null &&
+            b.Service.Category == service.Category &&
             b.StartAt < endAt && b.EndAt > startAt, ct);
         if (overlap) return (false, null, "Слот уже занят, выберите другое время");
 

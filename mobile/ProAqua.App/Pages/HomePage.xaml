@@ -26,7 +26,7 @@
                         StrokeThickness="1.5"
                         Stroke="{StaticResource Primary}"
                         StrokeShape="RoundRectangle 18"
-                        BackgroundColor="#1A0F2A36"
+                        BackgroundColor="#1A0A0A0A"
                         Margin="16,0"
                         Padding="16">
                     <Border.GestureRecognizers>
@@ -57,127 +57,77 @@
                     </Grid>
                 </Border>
 
-                <ScrollView x:Name="PromoScroll"
-                            Orientation="Horizontal"
-                            HorizontalScrollBarVisibility="Never"
-                            VerticalScrollBarVisibility="Never"
-                            HeightRequest="210"
-                            Margin="16,0"
-                            Scrolled="OnPromoScrolled">
-                    <HorizontalStackLayout Spacing="12">
+                <VerticalStackLayout Spacing="10">
+                    <ScrollView x:Name="PromoScroll"
+                                Orientation="Horizontal"
+                                HorizontalScrollBarVisibility="Never"
+                                VerticalScrollBarVisibility="Never"
+                                HeightRequest="312"
+                                Margin="16,0"
+                                Scrolled="OnPromoScrolled">
+                        <HorizontalStackLayout x:Name="PromoRow" Spacing="12" Padding="0">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Border WidthRequest="{Binding SlideWidth}"
+                                            HeightRequest="312"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 20"
+                                            BackgroundColor="{StaticResource MidnightBlue}"
+                                            Padding="0">
+                                        <Grid IsClippedToBounds="True">
+                                            <!-- Full-bleed promo image -->
+                                            <Image Source="{Binding ImageSource}"
+                                                   Aspect="AspectFill"
+                                                   HorizontalOptions="Fill"
+                                                   VerticalOptions="Fill" />
 
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 22"
-                                HeightRequest="210"
-                                Padding="0"
-                                WidthRequest="{Binding Source={x:Reference PromoScroll}, Path=Width}">
-                            <Grid>
-                                <Image Source="hero_wash.png" Aspect="AspectFill" />
-                                <BoxView Color="#99001C2B" InputTransparent="True" />
-                                <VerticalStackLayout Padding="20" VerticalOptions="End" Spacing="6">
-                                    <Label Text="Премиальный уход для вашего автомобиля"
-                                           FontSize="22"
-                                           FontAttributes="Bold"
-                                           TextColor="White"
-                                           LineBreakMode="WordWrap" />
-                                    <Label Text="Чистота. Блеск. Защита."
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray200}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Border>
+                                            <!-- Soft blur-like fade: transparent → black so page bg shows through -->
+                                            <Border StrokeThickness="0"
+                                                    InputTransparent="True"
+                                                    VerticalOptions="Fill"
+                                                    HorizontalOptions="Fill">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                        <GradientStop Color="#00000000" Offset="0.0" />
+                                                        <GradientStop Color="#00000000" Offset="0.38" />
+                                                        <GradientStop Color="#66000000" Offset="0.58" />
+                                                        <GradientStop Color="#CC000000" Offset="0.78" />
+                                                        <GradientStop Color="#000000" Offset="1.0" />
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                            </Border>
 
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 22"
-                                HeightRequest="210"
-                                Padding="0"
-                                WidthRequest="{Binding Source={x:Reference PromoScroll}, Path=Width}">
-                            <Grid>
-                                <Image Source="service_deep_clean.png" Aspect="AspectFill" />
-                                <BoxView Color="#99001C2B" InputTransparent="True" />
-                                <VerticalStackLayout Padding="20" VerticalOptions="End" Spacing="6">
-                                    <Label Text="Глубокая очистка кузова"
-                                           FontSize="22"
-                                           FontAttributes="Bold"
-                                           TextColor="White"
-                                           LineBreakMode="WordWrap" />
-                                    <Label Text="Пена, химия, идеальный результат"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray200}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Border>
+                                            <!-- Title + subtitle overlaid on image (bottom) -->
+                                            <VerticalStackLayout VerticalOptions="End"
+                                                                 Padding="16,0,16,18"
+                                                                 Spacing="4"
+                                                                 InputTransparent="True">
+                                                <Label Text="{Binding Title}"
+                                                       FontSize="17"
+                                                       FontAttributes="Bold"
+                                                       TextColor="White"
+                                                       LineBreakMode="WordWrap"
+                                                       MaxLines="2" />
+                                                <Label Text="{Binding Description}"
+                                                       FontSize="12"
+                                                       TextColor="{StaticResource Primary}"
+                                                       LineBreakMode="TailTruncation"
+                                                       MaxLines="2" />
+                                            </VerticalStackLayout>
+                                        </Grid>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnPromoCardTapped" CommandParameter="{Binding .}" />
+                                        </Border.GestureRecognizers>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </HorizontalStackLayout>
+                    </ScrollView>
 
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 22"
-                                HeightRequest="210"
-                                Padding="0"
-                                WidthRequest="{Binding Source={x:Reference PromoScroll}, Path=Width}">
-                            <Grid>
-                                <Image Source="service_detailing.png" Aspect="AspectFill" />
-                                <BoxView Color="#99001C2B" InputTransparent="True" />
-                                <VerticalStackLayout Padding="20" VerticalOptions="End" Spacing="6">
-                                    <Label Text="Детейлинг и полировка"
-                                           FontSize="22"
-                                           FontAttributes="Bold"
-                                           TextColor="White"
-                                           LineBreakMode="WordWrap" />
-                                    <Label Text="Восстановление блеска ЛКП"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray200}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Border>
-
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 22"
-                                HeightRequest="210"
-                                Padding="0"
-                                WidthRequest="{Binding Source={x:Reference PromoScroll}, Path=Width}">
-                            <Grid>
-                                <Image Source="service_ceramic.png" Aspect="AspectFill" />
-                                <BoxView Color="#99001C2B" InputTransparent="True" />
-                                <VerticalStackLayout Padding="20" VerticalOptions="End" Spacing="6">
-                                    <Label Text="Керамическое покрытие"
-                                           FontSize="22"
-                                           FontAttributes="Bold"
-                                           TextColor="White"
-                                           LineBreakMode="WordWrap" />
-                                    <Label Text="Долгая защита кузова"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray200}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Border>
-
-                        <Border StrokeThickness="0"
-                                StrokeShape="RoundRectangle 22"
-                                HeightRequest="210"
-                                Padding="0"
-                                WidthRequest="{Binding Source={x:Reference PromoScroll}, Path=Width}">
-                            <Grid>
-                                <Image Source="service_interior.png" Aspect="AspectFill" />
-                                <BoxView Color="#99001C2B" InputTransparent="True" />
-                                <VerticalStackLayout Padding="20" VerticalOptions="End" Spacing="6">
-                                    <Label Text="Комплексная мойка салона"
-                                           FontSize="22"
-                                           FontAttributes="Bold"
-                                           TextColor="White"
-                                           LineBreakMode="WordWrap" />
-                                    <Label Text="Свежесть и порядок внутри"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray200}" />
-                                </VerticalStackLayout>
-                            </Grid>
-                        </Border>
-
-                    </HorizontalStackLayout>
-                </ScrollView>
-
-                <HorizontalStackLayout x:Name="PromoDashIndicators"
-                                       HorizontalOptions="Start"
-                                       Spacing="6"
-                                       Margin="20,-4,0,0" />
+                    <HorizontalStackLayout x:Name="PromoDashIndicators"
+                                           HorizontalOptions="Center"
+                                           Spacing="6" />
+                </VerticalStackLayout>
 
                 <VerticalStackLayout Spacing="12" Padding="0,4,0,0">
                     <Grid Margin="20,0,20,0" ColumnDefinitions="*,Auto">
@@ -274,9 +224,9 @@
                         ImageSource="icon_calendar.png" />
 
                 <Border StrokeThickness="1"
-                        Stroke="{StaticResource Gray600}"
+                        Stroke="{StaticResource CardStrokeBrush}"
                         StrokeShape="RoundRectangle 16"
-                        BackgroundColor="#140A2F3F"
+                        BackgroundColor="#140A0A0A"
                         Margin="20,0"
                         Padding="14">
                     <Border.GestureRecognizers>
